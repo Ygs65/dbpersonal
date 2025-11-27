@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,6 +10,7 @@
       box-sizing: border-box;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
+
     body {
       margin: 0;
       background: #f5f5f5;
@@ -17,6 +19,7 @@
       align-items: flex-start;
       min-height: 100vh;
     }
+
     .app {
       background: #fff;
       width: 100%;
@@ -26,11 +29,13 @@
       border-radius: 16px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, .08);
     }
+
     h1 {
       font-size: 1.4rem;
       text-align: center;
       margin: 0 0 12px;
     }
+
     .tabs {
       display: flex;
       border-radius: 999px;
@@ -38,6 +43,7 @@
       padding: 3px;
       margin-bottom: 12px;
     }
+
     .tab-btn {
       flex: 1;
       border: none;
@@ -47,26 +53,32 @@
       font-size: .9rem;
       cursor: pointer;
     }
+
     .tab-btn.active {
       background: #1976d2;
       color: #fff;
     }
+
     .section {
       display: none;
     }
+
     .section.active {
       display: block;
     }
+
     .row {
       margin-bottom: 10px;
       font-size: .9rem;
     }
+
     label {
       font-size: .85rem;
       color: #555;
       display: block;
       margin-bottom: 4px;
     }
+
     select,
     input[type="number"],
     input[type="text"] {
@@ -76,6 +88,7 @@
       border: 1px solid #ccc;
       font-size: .9rem;
     }
+
     .inline-row {
       display: flex;
       gap: 6px;
@@ -83,28 +96,34 @@
       align-items: flex-end;
       flex-wrap: wrap;
     }
+
     .inline-row>div {
       flex: 1;
     }
+
     .small {
       font-size: .8rem;
       color: #777;
     }
+
     #bankInfo {
       font-size: .8rem;
       color: #777;
       margin-bottom: 4px;
     }
+
     #sessionSummary {
       font-size: .9rem;
       color: #555;
       margin-bottom: 8px;
     }
+
     #timeArea {
       font-size: .9rem;
       color: #d32f2f;
       margin-bottom: 8px;
     }
+
     .btn-small {
       padding: 6px 10px;
       border-radius: 999px;
@@ -114,15 +133,18 @@
       background: #1976d2;
       color: #fff;
     }
+
     .btn-outline {
       background: #fff;
       color: #1976d2;
       border: 1px solid #1976d2;
     }
+
     .btn-danger {
       background: #f44336;
       color: #fff;
     }
+
     .q-card {
       border-radius: 12px;
       border: 1px solid #eee;
@@ -130,6 +152,7 @@
       margin-bottom: 10px;
       background: #fafafa;
     }
+
     .q-header {
       font-size: .85rem;
       color: #666;
@@ -139,20 +162,24 @@
       flex-wrap: wrap;
       gap: 4px;
     }
+
     .q-text {
       font-size: .95rem;
       margin-bottom: 6px;
     }
+
     .q-topic {
       font-size: .8rem;
       color: #999;
     }
+
     .options {
       display: flex;
       flex-direction: column;
       gap: 6px;
       margin-bottom: 6px;
     }
+
     .option-btn {
       width: 100%;
       border: 1px solid #ddd;
@@ -164,25 +191,31 @@
       cursor: pointer;
       transition: background .15s, border-color .15s, transform .05s;
     }
+
     .option-btn:active {
       transform: scale(.98);
     }
+
     .option-btn.correct {
       background: #e6f7e6;
       border-color: #4caf50;
     }
+
     .option-btn.wrong {
       background: #ffe9e9;
       border-color: #f44336;
     }
+
     .option-btn.selected {
       border-color: #1976d2;
       background: #e3f2fd;
     }
+
     .option-btn:disabled {
       cursor: default;
       opacity: .9;
     }
+
     .q-footer {
       display: flex;
       gap: 6px;
@@ -190,13 +223,16 @@
       align-items: center;
       margin-top: 4px;
     }
+
     .q-footer button {
       flex: 0 0 auto;
     }
+
     .q-footer-status {
       font-size: .8rem;
       color: #555;
     }
+
     .q-explanation {
       font-size: .85rem;
       background: #f9f9f9;
@@ -206,6 +242,7 @@
       margin-top: 6px;
       display: none;
     }
+
     .card {
       border-radius: 12px;
       background: #fafafa;
@@ -213,11 +250,13 @@
       margin-bottom: 12px;
       border: 1px solid #eee;
     }
+
     .card-title {
       font-size: .95rem;
       font-weight: 600;
       margin-bottom: 6px;
     }
+
     textarea {
       width: 100%;
       min-height: 100px;
@@ -228,6 +267,7 @@
       font-family: monospace;
       resize: vertical;
     }
+
     .bank-list-item {
       border-radius: 10px;
       padding: 8px 10px;
@@ -238,12 +278,14 @@
       flex-direction: column;
       gap: 4px;
     }
+
     .bank-actions {
       display: flex;
       gap: 6px;
       margin-top: 4px;
       flex-wrap: wrap;
     }
+
     .bank-actions button {
       flex: 1 1 45%;
       padding: 4px 0;
@@ -252,6 +294,7 @@
       font-size: .8rem;
       cursor: pointer;
     }
+
     .badge {
       display: inline-block;
       padding: 2px 8px;
@@ -260,11 +303,13 @@
       font-size: .75rem;
       margin-left: 4px;
     }
+
     .hidden {
       display: none;
     }
   </style>
 </head>
+
 <body>
   <button onclick="window.location.href='/'"
     style="position:fixed;top:8px;left:8px;padding:6px 12px;border-radius:999px;border:none;background:#1976d2;color:#fff;cursor:pointer;z-index:10;">
@@ -382,7 +427,10 @@
 
   <script>
     const STORAGE_KEY = "customQuizBanks_allInOnePage_v4";
-    const ROOM_RULES_KEY = "fb_room_exam_rules";
+    const ROOM_RULES_KEY = 'fb_room_exam_rules';
+    const USER_STATE_KEY = 'fb_user_state_v1';
+    const PLAYER_PROFILE_KEY = 'fb_player_profile_v1';
+
 
     function loadBanks() {
       try {
@@ -515,13 +563,13 @@
     }
 
     let currentBank = null,
-        sessionIndices = [],
-        answeredCount = 0,
-        correctCount = 0,
-        answeredMap = {},
-        sessionActive = false,
-        timerId = null,
-        remainingSeconds = 0;
+      sessionIndices = [],
+      answeredCount = 0,
+      correctCount = 0,
+      answeredMap = {},
+      sessionActive = false,
+      timerId = null,
+      remainingSeconds = 0;
 
     function formatDate(iso) {
       if (!iso) return "";
@@ -736,13 +784,13 @@
       if (lines.length < 2) return [];
       const header = lines[0].split(",");
       const idxTopic = header.indexOf("topic"),
-            idxText = header.indexOf("text"),
-            idxA = header.indexOf("optionA"),
-            idxB = header.indexOf("optionB"),
-            idxC = header.indexOf("optionC"),
-            idxD = header.indexOf("optionD"),
-            idxAns = header.indexOf("answer"),
-            idxExp = header.indexOf("explanation");
+        idxText = header.indexOf("text"),
+        idxA = header.indexOf("optionA"),
+        idxB = header.indexOf("optionB"),
+        idxC = header.indexOf("optionC"),
+        idxD = header.indexOf("optionD"),
+        idxAns = header.indexOf("answer"),
+        idxExp = header.indexOf("explanation");
       if (idxText === -1 || idxA === -1 || idxB === -1 || idxAns === -1) {
         alert("CSV 欄位至少需要：topic,text,optionA,optionB,optionC,optionD,answer,explanation");
         return [];
@@ -878,7 +926,7 @@
 
     function updateTimeDisplay() {
       const m = Math.floor(remainingSeconds / 60),
-            s = remainingSeconds % 60;
+        s = remainingSeconds % 60;
       timeRemainingSpan.textContent =
         `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
     }
@@ -912,7 +960,7 @@
         return;
       }
       const mode = modeSelect.value,
-            topicFilter = topicFilterSelect.value || "__all__";
+        topicFilter = topicFilterSelect.value || "__all__";
       const avail = currentBank.questions.filter(q => {
         if (topicFilter !== "__all__" && q.topic !== topicFilter) return false;
         if (mode === "wrong" && q.wrong !== true) return false;
@@ -1045,7 +1093,7 @@
         return;
       }
       const mode = modeSelect.value,
-            topicFilter = topicFilterSelect.value || "__all__";
+        topicFilter = topicFilterSelect.value || "__all__";
       let candidates = [];
       currentBank.questions.forEach((q, idx) => {
         if (topicFilter !== "__all__" && q.topic !== topicFilter) return;
@@ -1089,7 +1137,7 @@
       const normalized = normalizeRoomQuestions(roomQs);
       if (normalized.length === 0) {
         alert("房間考試資料有誤，已改為一般刷題模式。");
-        try { localStorage.removeItem(ROOM_RULES_KEY); } catch (e) {}
+        try { localStorage.removeItem(ROOM_RULES_KEY); } catch (e) { }
         roomRules = null;
         return;
       }
@@ -1123,83 +1171,152 @@
       startTimer(limit);
     }
 
-    function gradeAll(autoByTime = false) {
-      if (!sessionActive) {
-        if (!autoByTime) alert("目前沒有進行中的練習。");
+    async function gradeAll(autoByTime = false) {
+      if (!currentBank) {
+        alert('尚未載入任何題庫');
         return;
       }
-      sessionActive = false;
-      stopTimer();
-      submitAllBtn.disabled = true;
 
-      answeredCount = 0;
-      correctCount = 0;
+      let correctCount = 0;
+      let totalQuestions = currentBank.questions.length;
+      const wrongDetailList = [];
 
-      sessionIndices.forEach(qIdx => {
-        const card = questionsContainer.querySelector(`.q-card[data-q-index="${qIdx}"]`);
-        if (!card) return;
-        const q = currentBank.questions[qIdx];
-        const buttons = card.querySelectorAll(".option-btn");
-        const statusSpan = card.querySelector(".q-footer-status");
-        const expDiv = card.querySelector(".q-explanation");
-        const answers = Array.isArray(q.answers) ? q.answers.slice().sort() : [q.answers];
+      currentBank.questions.forEach((q, idx) => {
+        let container = document.querySelector(`.question-card[data-q-index="${idx}"]`);
+        if (!container) return;
 
-        const selected = [];
-        buttons.forEach((b, idx) => {
-          if (b.classList.contains("selected")) selected.push(idx);
-        });
-        const selectedSorted = selected.slice().sort();
+        let mode = getQuestionMode(q);
+        let selected = [];
 
-        buttons.forEach(b => b.disabled = true);
-        buttons.forEach((b, idx) => {
-          if (answers.includes(idx)) b.classList.add("correct");
-        });
-        selected.forEach(idx => {
-          if (!answers.includes(idx)) buttons[idx].classList.add("wrong");
-        });
-
-        const answered = selected.length > 0;
-        let correct = false;
-        if (answered) {
-          correct = selectedSorted.length === answers.length &&
-            answers.every((v, i) => v === selectedSorted[i]);
-        }
-
-        if (!answered) {
-          statusSpan.textContent = "作答結果：未作答（算錯）";
-        } else if (correct) {
-          statusSpan.textContent = "作答結果：✔ 答對";
+        if (mode === 'single') {
+          let checked = container.querySelector('input[type="radio"]:checked');
+          if (checked) selected.push(checked.value);
         } else {
-          statusSpan.textContent =
-            answers.length > 1
-              ? "作答結果：✘ 有錯誤或漏選"
-              : "作答結果：✘ 答錯";
-          markQuestionWrong(qIdx);
+          container.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+            selected.push(cb.value);
+          });
         }
 
-        if (q.explanation && q.explanation.trim() !== "") {
-          expDiv.textContent = "解析：" + q.explanation;
-          expDiv.style.display = "block";
-        }
+        let answers = Array.isArray(q.answer)
+          ? q.answer.map(String)
+          : String(q.answer)
+            .split(',')
+            .map(s => s.trim());
 
-        answeredMap[qIdx] = { graded: true, answered, correct };
-        if (answered) answeredCount++;
-        if (correct) correctCount++;
-        if (!answered && !correct) {
-          markQuestionWrong(qIdx);
+        selected.sort();
+        answers.sort();
+
+        let correct = JSON.stringify(selected) === JSON.stringify(answers);
+
+        if (correct) {
+          correctCount++;
+          markQuestionCorrect(idx);
+        } else {
+          markQuestionWrong(idx);
+
+          // 蒐集錯題資訊，給後端當錯題本
+          const qId =
+            q.id ||
+            q.qid ||
+            q.code ||
+            (typeof q.no !== 'undefined' ? String(q.no) : `idx-${idx}`);
+
+          wrongDetailList.push({
+            id: qId,
+            text: q.text || q.question || '',
+            answer: answers.join(','),
+            userAnswer: selected.join(','),
+            bankId: currentBank.id || '',
+          });
         }
       });
 
       updateSessionProgressSummary();
-      const total = sessionIndices.length;
-      const score = total > 0 ? Math.round(correctCount * 100 / total) : 0;
+
+      let score = Math.round((correctCount / totalQuestions) * 100);
+
       if (autoByTime) {
-        alert(`時間到，已自動批改並統計成績。\n本次得分：${score} 分（答對 ${correctCount}/${total} 題）`);
+        alert(
+          `時間到，自動交卷。\n本次測驗：共 ${totalQuestions} 題，答對 ${correctCount} 題，得分 ${score} 分。`
+        );
       } else {
-        alert(`已完成批改。\n本次得分：${score} 分（答對 ${correctCount}/${total} 題）`);
+        alert(
+          `本次測驗：共 ${totalQuestions} 題，答對 ${correctCount} 題，得分 ${score} 分。`
+        );
       }
-      try { localStorage.removeItem(ROOM_RULES_KEY); } catch (e) {}
-      roomRules = null;
+
+      // === 把成績送到後端，更新「我的成績 / 排行榜 / 錯題本」 ===
+      try {
+        let playerId = null;
+        let playerName = '';
+
+        try {
+          const raw = localStorage.getItem(PLAYER_PROFILE_KEY);
+          if (raw) {
+            const p = JSON.parse(raw);
+            playerId = p.playerId || null;
+            playerName = p.name || '';
+          }
+        } catch (e) { }
+
+        // 如果沒有登入紀錄，就用一個暫時 ID
+        if (!playerId) {
+          playerId = 'guest-' + Math.random().toString(36).slice(2, 8);
+        }
+
+        // 判斷現在是不是房間競賽
+        let mode = 'personal';
+        let roomId = '';
+        let bankId = currentBank.id || '';
+
+        try {
+          const rawRules = localStorage.getItem(ROOM_RULES_KEY);
+          if (rawRules) {
+            const rules = JSON.parse(rawRules);
+            if (rules && rules.roomId) {
+              mode = 'room';
+              roomId = rules.roomId;
+              if (rules.bankId) bankId = rules.bankId;
+            }
+          }
+        } catch (e) { }
+
+        await fetch('/api/exam_result', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            playerId,
+            name: playerName,
+            mode,
+            roomId,
+            bankId,
+            score,
+            total: totalQuestions,
+            correctCount,
+            wrongQuestions: wrongDetailList,
+          }),
+        });
+      } catch (e) {
+        console.error('submit exam_result failed', e);
+      }
+
+      // === 結束本次作答 ===
+      sessionStarted = false;
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+
+      document.getElementById('btnStartSession').disabled = false;
+      document.getElementById('btnSubmitAll').disabled = true;
+
+      // 房間規則用完就清掉，避免下次進來還誤判在房間考試
+      try {
+        localStorage.removeItem(ROOM_RULES_KEY);
+      } catch (e) { }
+
+      // === 回到 FlashBattle 首頁（保持登入資訊在 localStorage） ===
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
     }
 
     quizBankSelect.onchange = initCurrentBank;
@@ -1242,11 +1359,12 @@
           startSessionWithRoomQuestions(roomRules.questions);
         } else {
           console.warn("房間規則中沒有 questions 陣列，改為一般刷題模式。");
-          try { localStorage.removeItem(ROOM_RULES_KEY); } catch (e) {}
+          try { localStorage.removeItem(ROOM_RULES_KEY); } catch (e) { }
           roomRules = null;
         }
       }
     })();
   </script>
 </body>
+
 </html>

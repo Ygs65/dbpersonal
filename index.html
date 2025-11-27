@@ -1,669 +1,721 @@
 <!doctype html>
 <html lang="zh-Hant">
+
 <head>
   <meta charset="utf-8">
   <title>FlashBattle - Redis 線上測驗系統</title>
   <style>
-    *{box-sizing:border-box;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
-    body{
-      margin:0;
-      background:#f5f5f5;
-      min-height:100vh;
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    .app{
-      background:#fff;
-      width:100%;
-      max-width:980px;
-      margin:16px;
-      padding:20px 20px 24px;
-      border-radius:16px;
-      box-shadow:0 4px 16px rgba(0,0,0,.08);
+
+    body {
+      margin: 0;
+      background: #f5f5f5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
     }
-    h1{
-      font-size:1.4rem;
-      text-align:center;
-      margin:0 0 12px;
+
+    .app {
+      background: #fff;
+      width: 100%;
+      max-width: 980px;
+      margin: 16px;
+      padding: 20px 20px 24px;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .08);
     }
-    .subtitle{
-      font-size:.85rem;
-      text-align:center;
-      color:#666;
-      margin-bottom:16px;
+
+    h1 {
+      font-size: 1.4rem;
+      text-align: center;
+      margin: 0 0 12px;
     }
-    .grid{
-      display:grid;
-      grid-template-columns:2.1fr 1.4fr;
-      gap:16px;
+
+    .subtitle {
+      font-size: .85rem;
+      text-align: center;
+      color: #666;
+      margin-bottom: 16px;
     }
-    @media (max-width:768px){
-      .grid{grid-template-columns:1fr;}
+
+    .grid {
+      display: grid;
+      grid-template-columns: 2.1fr 1.4fr;
+      gap: 16px;
     }
-    .card{
-      border-radius:12px;
-      border:1px solid #e0e0e0;
-      padding:12px 14px;
-      margin-bottom:10px;
-      background:#fafafa;
+
+    @media (max-width:768px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
     }
-    .card-title{
-      font-size:.95rem;
-      font-weight:600;
-      margin-bottom:6px;
+
+    .card {
+      border-radius: 12px;
+      border: 1px solid #e0e0e0;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      background: #fafafa;
     }
-    label{
-      font-size:.85rem;
-      display:block;
-      margin:4px 0;
+
+    .card-title {
+      font-size: .95rem;
+      font-weight: 600;
+      margin-bottom: 6px;
     }
-    input, select{
-      width:100%;
-      border-radius:8px;
-      border:1px solid #ccc;
-      padding:6px 8px;
-      font-size:.9rem;
+
+    label {
+      font-size: .85rem;
+      display: block;
+      margin: 4px 0;
     }
-    .inline-row{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
+
+    input,
+    select {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      padding: 6px 8px;
+      font-size: .9rem;
     }
-    .inline-row > div{flex:1;}
-    .btn{
-      padding:6px 12px;
-      border-radius:999px;
-      border:none;
-      cursor:pointer;
-      font-size:.85rem;
-      background:#1976d2;
-      color:#fff;
-      margin-right:6px;
-      margin-top:4px;
+
+    .inline-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
     }
-    .btn.secondary{
-      background:#eee;
-      color:#333;
+
+    .inline-row>div {
+      flex: 1;
     }
-    .btn.danger{
-      background:#d32f2f;
+
+    .btn {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: .85rem;
+      background: #1976d2;
+      color: #fff;
+      margin-right: 6px;
+      margin-top: 4px;
     }
-    .btn:disabled{
-      opacity:.5;
-      cursor:not-allowed;
+
+    .btn.secondary {
+      background: #eee;
+      color: #333;
     }
-    #log{
-      border-radius:8px;
-      border:1px solid #e0e0e0;
-      padding:8px;
-      max-height:180px;
-      overflow-y:auto;
-      background:#fcfcfc;
-      font-size:12px;
-      white-space:pre-wrap;
+
+    .btn.danger {
+      background: #d32f2f;
     }
-    pre{
-      background:#f7f7f7;
-      padding:8px;
-      border-radius:6px;
-      font-size:12px;
-      margin:4px 0;
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
     }
-    ul{padding-left:18px;font-size:.85rem;}
-    ul li{margin-bottom:2px;}
-    .small-text{font-size:.8rem;color:#777;}
+
+    #log {
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      padding: 8px;
+      max-height: 180px;
+      overflow-y: auto;
+      background: #fcfcfc;
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+
+    pre {
+      background: #f7f7f7;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin: 4px 0;
+    }
+
+    ul {
+      padding-left: 18px;
+      font-size: .85rem;
+    }
+
+    ul li {
+      margin-bottom: 2px;
+    }
+
+    .small-text {
+      font-size: .8rem;
+      color: #777;
+    }
   </style>
 </head>
+
 <body>
-<div class="app">
-  <h1>FlashBattle - Redis 線上測驗系統</h1>
-  <div class="subtitle">
-    模式可切換：<b>個人刷題</b>（直接用 tqcexam）或 <b>房間競賽</b>（房間專屬題庫 + 自動跳 tqcexam 作答）。<br>
-    ✅ 會記住你剛剛填寫的名稱 / 房間 / 題庫選擇，下次回來會自動恢復。
-  </div>
-
-  <div class="grid">
-    <div>
-      <div class="card">
-        <div class="card-title">玩家登入</div>
-        <label>玩家名稱：
-          <input id="name" value="Player">
-        </label>
-        <button id="btnLogin" class="btn">登入 Login</button>
-        <div id="playerInfo" style="font-size:.8rem;color:#555;margin-top:4px;"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">模式選擇 & 房間設定</div>
-        <div class="inline-row">
-          <div>
-            <label>模式：
-              <select id="modeSelect">
-                <option value="personal">個人刷題（不需房間）</option>
-                <option value="room">房間競賽</option>
-              </select>
-            </label>
-          </div>
-          <div>
-            <label>房間 ID（只在房間競賽模式使用）：
-              <input id="room" value="1">
-            </label>
-          </div>
-        </div>
-        <button id="btnCreateRoom" class="btn">建立房間（房主）</button>
-        <button id="btnJoin" class="btn secondary">加入房間 Join Room</button>
-        <button id="btnRoomExam" class="btn danger">房間競賽多題測驗（房主設定）</button>
-        <div id="roomInfo" style="font-size:.8rem;color:#555;margin-top:4px;"></div>
-        <div id="examInfo" style="font-size:.8rem;color:#d32f2f;margin-top:2px;"></div>
-      </div>
-
-      <div class="card" id="roomBankCard">
-        <div class="card-title">題庫管理（房間專用，鎖定房間ID）</div>
-        <div class="inline-row">
-          <div>
-            <label>Redis 題庫（此房間可用）：
-              <select id="bankSelect" disabled>
-                <option value="">（請先加入房間）</option>
-              </select>
-            </label>
-          </div>
-          <div style="flex:0 0 auto;">
-            <button id="btnReloadBanks" class="btn secondary" disabled>重新載入列表</button>
-            <button id="btnLoadBankQuestions" class="btn" disabled>載入題庫資訊</button>
-            <button id="btnDeleteBank" class="btn danger" disabled>刪除題庫</button>
-          </div>
-        </div>
-
-        <label style="margin-top:6px;">從本機匯入檔案建立此房間題庫（JSON 或 CSV）：</label>
-        <div class="inline-row">
-          <div>
-            <input type="file" id="bankFileInput" accept=".json,.csv">
-          </div>
-          <div style="flex:0 0 160px;">
-            <input id="bankIdInput" placeholder="題庫ID（ex: iot）">
-          </div>
-          <div style="flex:0 0 160px;">
-            <input id="bankNameInput" placeholder="題庫名稱（選填）">
-          </div>
-          <div style="flex:0 0 auto;">
-            <button id="btnImportBank" class="btn" disabled>上傳並建立題庫</button>
-          </div>
-        </div>
-
-        <div id="questionInfo" style="font-size:.8rem;color:#555;margin-top:4px;">
-          房間模式下，題庫會鎖定在房間內；請先加入房間。
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">多題刷題入口</div>
-        <p class="small-text">
-          ● <b>個人刷題模式：</b> 直接前往 <code>tqcexam.html</code>，自己選題庫、多題練習。<br>
-          ● <b>房間競賽模式：</b> 房主設定題庫與規則後，系統會把規則與題目同步到所有玩家，並自動導到 <code>tqcexam</code> 開始作答。
-        </p>
-        <button id="btnGoTqcExam" class="btn">前往多題練習頁面 / 回到考場 (tqcexam)</button>
-      </div>
-
-      <div class="card">
-        <div class="card-title">事件 Log（偵錯 / 觀察用）</div>
-        <div id="log"></div>
-      </div>
+  <div class="app">
+    <h1>FlashBattle - Redis 線上測驗系統</h1>
+    <div class="subtitle">
+      模式可切換：<b>個人刷題</b>（直接用 tqcexam）或 <b>房間競賽</b>（房間專屬題庫 + 自動跳 tqcexam 作答）。<br>
+      ✅ 會記住你剛剛填寫的名稱 / 房間 / 題庫選擇，下次回來會自動恢復。
     </div>
 
-    <div>
-      <div class="card">
-        <div class="card-title">全伺服器排行榜（Redis Sorted Set）</div>
-        <pre id="leader">尚無資料</pre>
+    <div class="grid">
+      <div>
+        <div class="card">
+          <div class="card-title">玩家登入</div>
+          <label>玩家名稱：
+            <input id="name" value="Player">
+          </label>
+          <button id="btnLogin" class="btn">登入 Login</button>
+          <div id="playerInfo" style="font-size:.8rem;color:#555;margin-top:4px;"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">模式選擇 & 房間設定</div>
+          <div class="inline-row">
+            <div>
+              <label>模式：
+                <select id="modeSelect">
+                  <option value="personal">個人刷題（不需房間）</option>
+                  <option value="room">房間競賽</option>
+                </select>
+              </label>
+            </div>
+            <div>
+              <label>房間 ID（只在房間競賽模式使用）：
+                <input id="room" value="1">
+              </label>
+            </div>
+          </div>
+          <button id="btnCreateRoom" class="btn">建立房間（房主）</button>
+          <button id="btnJoin" class="btn secondary">加入房間 Join Room</button>
+          <button id="btnRoomExam" class="btn danger">房間競賽多題測驗（房主設定）</button>
+          <div id="roomInfo" style="font-size:.8rem;color:#555;margin-top:4px;"></div>
+          <div id="examInfo" style="font-size:.8rem;color:#d32f2f;margin-top:2px;"></div>
+        </div>
+
+        <div class="card" id="roomBankCard">
+          <div class="card-title">題庫管理（房間專用，鎖定房間ID）</div>
+          <div class="inline-row">
+            <div>
+              <label>Redis 題庫（此房間可用）：
+                <select id="bankSelect" disabled>
+                  <option value="">（請先加入房間）</option>
+                </select>
+              </label>
+            </div>
+            <div style="flex:0 0 auto;">
+              <button id="btnReloadBanks" class="btn secondary" disabled>重新載入列表</button>
+              <button id="btnLoadBankQuestions" class="btn" disabled>載入題庫資訊</button>
+              <button id="btnDeleteBank" class="btn danger" disabled>刪除題庫</button>
+            </div>
+          </div>
+
+          <label style="margin-top:6px;">從本機匯入檔案建立此房間題庫（JSON 或 CSV）：</label>
+          <div class="inline-row">
+            <div>
+              <input type="file" id="bankFileInput" accept=".json,.csv">
+            </div>
+            <div style="flex:0 0 160px;">
+              <input id="bankIdInput" placeholder="題庫ID（ex: iot）">
+            </div>
+            <div style="flex:0 0 160px;">
+              <input id="bankNameInput" placeholder="題庫名稱（選填）">
+            </div>
+            <div style="flex:0 0 auto;">
+              <button id="btnImportBank" class="btn" disabled>上傳並建立題庫</button>
+            </div>
+          </div>
+
+          <div id="questionInfo" style="font-size:.8rem;color:#555;margin-top:4px;">
+            房間模式下，題庫會鎖定在房間內；請先加入房間。
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">多題刷題入口</div>
+          <p class="small-text">
+            ● <b>個人刷題模式：</b> 直接前往 <code>tqcexam.html</code>，自己選題庫、多題練習。<br>
+            ● <b>房間競賽模式：</b> 房主設定題庫與規則後，系統會把規則與題目同步到所有玩家，並自動導到 <code>tqcexam</code> 開始作答。
+          </p>
+          <button id="btnGoTqcExam" class="btn">前往多題練習頁面 / 回到考場 (tqcexam)</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">事件 Log（偵錯 / 觀察用）</div>
+          <div id="log"></div>
+        </div>
       </div>
 
-      <div class="card">
-        <div class="card-title">我的成績（Redis Hash）</div>
-        <pre id="myStats">尚未登入</pre>
-      </div>
+      <div>
+        <div class="card">
+          <div class="card-title">全伺服器排行榜（Redis Sorted Set）</div>
+          <pre id="leader">尚無資料</pre>
+        </div>
 
-      <div class="card">
-        <div class="card-title">我的錯題本（記憶效果）</div>
-        <ul id="wrongList">
-          <li style="color:#888;">尚無錯題紀錄。</li>
-        </ul>
+        <div class="card">
+          <div class="card-title">我的成績（Redis Hash）</div>
+          <pre id="myStats">尚未登入</pre>
+        </div>
+
+        <div class="card">
+          <div class="card-title">我的錯題本（記憶效果）</div>
+          <ul id="wrongList">
+            <li style="color:#888;">尚無錯題紀錄。</li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
-  const socket = io();
-  const ROOM_RULES_KEY = 'fb_room_exam_rules';
-  const USER_STATE_KEY = 'fb_user_state_v1';
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
 
-  const logEl = document.getElementById('log');
-  const leaderEl = document.getElementById('leader');
-  const myStatsEl = document.getElementById('myStats');
-  const wrongListEl = document.getElementById('wrongList');
-  const playerInfo = document.getElementById('playerInfo');
-  const roomInfo = document.getElementById('roomInfo');
-  const examInfo = document.getElementById('examInfo');
-  const bankSelect = document.getElementById('bankSelect');
-  const btnReloadBanks = document.getElementById('btnReloadBanks');
-  const btnLoadBankQuestions = document.getElementById('btnLoadBankQuestions');
-  const btnDeleteBank = document.getElementById('btnDeleteBank');
-  const bankFileInput = document.getElementById('bankFileInput');
-  const bankIdInput = document.getElementById('bankIdInput');
-  const bankNameInput = document.getElementById('bankNameInput');
-  const btnImportBank = document.getElementById('btnImportBank');
-  const questionInfo = document.getElementById('questionInfo');
-  const modeSelect = document.getElementById('modeSelect');
-  const roomBankCard = document.getElementById('roomBankCard');
-  const nameInput = document.getElementById('name');
-  const roomInput = document.getElementById('room');
+    const socket = io();
+    const ROOM_RULES_KEY = 'fb_room_exam_rules';
+    const USER_STATE_KEY = 'fb_user_state_v1';
+    const PLAYER_PROFILE_KEY = 'fb_player_profile_v1';
 
-  let myPlayerId = null;
-  let joinedRoomId = null;
-  let bankMetaMap = {};
 
-  function log(msg){
-    logEl.textContent += msg + "\\n";
-    logEl.scrollTop = logEl.scrollHeight;
-  }
+    const logEl = document.getElementById('log');
+    const leaderEl = document.getElementById('leader');
+    const myStatsEl = document.getElementById('myStats');
+    const wrongListEl = document.getElementById('wrongList');
+    const playerInfo = document.getElementById('playerInfo');
+    const roomInfo = document.getElementById('roomInfo');
+    const examInfo = document.getElementById('examInfo');
+    const bankSelect = document.getElementById('bankSelect');
+    const btnReloadBanks = document.getElementById('btnReloadBanks');
+    const btnLoadBankQuestions = document.getElementById('btnLoadBankQuestions');
+    const btnDeleteBank = document.getElementById('btnDeleteBank');
+    const bankFileInput = document.getElementById('bankFileInput');
+    const bankIdInput = document.getElementById('bankIdInput');
+    const bankNameInput = document.getElementById('bankNameInput');
+    const btnImportBank = document.getElementById('btnImportBank');
+    const questionInfo = document.getElementById('questionInfo');
+    const modeSelect = document.getElementById('modeSelect');
+    const roomBankCard = document.getElementById('roomBankCard');
+    const nameInput = document.getElementById('name');
+    const roomInput = document.getElementById('room');
 
-  function setBankControlsEnabled(enabled){
-    bankSelect.disabled = !enabled;
-    btnReloadBanks.disabled = !enabled;
-    btnLoadBankQuestions.disabled = !enabled;
-    btnDeleteBank.disabled = !enabled;
-    btnImportBank.disabled = !enabled;
-    if(!enabled){
-      bankSelect.innerHTML = '<option value="">（請先加入房間）</option>';
-      questionInfo.textContent = '房間模式下，題庫會鎖定在房間內；請先加入房間。';
-    }
-  }
+    let myPlayerId = null;
+    let joinedRoomId = null;
+    let bankMetaMap = {};
 
-  function updateModeUI(){
-    const mode = modeSelect.value;
-    const btnCreateRoom = document.getElementById('btnCreateRoom');
-    const btnJoin = document.getElementById('btnJoin');
-    const btnRoomExam = document.getElementById('btnRoomExam');
-
-    if(mode === 'personal'){
-      roomBankCard.style.display = 'none';
-      btnCreateRoom.disabled = true;
-      btnJoin.disabled = true;
-      btnRoomExam.disabled = true;
-      setBankControlsEnabled(false);
-      examInfo.textContent = '目前為「個人刷題」模式：tqcexam 上的題庫與設定皆為個人使用。';
-    }else{
-      roomBankCard.style.display = 'block';
-      btnCreateRoom.disabled = false;
-      btnJoin.disabled = false;
-      btnRoomExam.disabled = false;
-      examInfo.textContent = '目前為「房間競賽」模式：題庫匯入會鎖定在指定房間中。';
-    }
-    saveUserState();
-  }
-  modeSelect.onchange = updateModeUI;
-
-  function saveUserState(){
-    try{
-      const state = {
-        name: nameInput.value || '',
-        mode: modeSelect.value || 'personal',
-        roomId: roomInput.value || '',
-        roomJoined: joinedRoomId || '',
-        lastBankId: bankSelect.value || '',
-      };
-      localStorage.setItem(USER_STATE_KEY, JSON.stringify(state));
-    }catch(e){}
-  }
-
-  function restoreUserState(){
-    try{
-      const raw = localStorage.getItem(USER_STATE_KEY);
-      if(!raw) return;
-      const st = JSON.parse(raw);
-      if(st.name) nameInput.value = st.name;
-      if(st.mode) modeSelect.value = st.mode;
-      if(st.roomId) roomInput.value = st.roomId;
-      updateModeUI();
-    }catch(e){}
-  }
-
-  nameInput.addEventListener('input', saveUserState);
-  roomInput.addEventListener('input', saveUserState);
-
-  document.getElementById('btnGoTqcExam').onclick = () => {
-    saveUserState();
-    if(modeSelect.value === 'personal'){
-      try{ localStorage.removeItem(ROOM_RULES_KEY); }catch(e){}
-    }
-    window.location.href = '/tqcexam.html';
-  };
-
-  document.getElementById('btnLogin').onclick = () => {
-    const name = nameInput.value || 'Player';
-    socket.emit('login', { name });
-  };
-
-  socket.on('login_ack', (d) => {
-    myPlayerId = d.playerId;
-    playerInfo.textContent = `登入成功：ID = ${d.playerId}，Name = ${d.name}`;
-    log('login_ack: ' + JSON.stringify(d));
-
-    if (d.stats && Object.keys(d.stats).length > 0) {
-      myStatsEl.textContent = JSON.stringify(d.stats, null, 2);
-    } else {
-      myStatsEl.textContent = '目前無成績紀錄。';
+    function log(msg) {
+      logEl.textContent += msg + "\\n";
+      logEl.scrollTop = logEl.scrollHeight;
     }
 
-    wrongListEl.innerHTML = '';
-    if (d.wrongQuestions && d.wrongQuestions.length > 0) {
-      d.wrongQuestions.forEach((q) => {
-        const li = document.createElement('li');
-        li.textContent = `題號 ${q.id}: ${q.text}（正解：${q.answer}）`;
-        wrongListEl.appendChild(li);
-      });
-    } else {
-      const li = document.createElement('li');
-      li.style.color = '#888';
-      li.textContent = '尚無錯題紀錄。';
-      wrongListEl.appendChild(li);
-    }
-  });
-
-  document.getElementById('btnCreateRoom').onclick = () => {
-    if(modeSelect.value !== 'room'){
-      alert('建立房間只在「房間競賽」模式使用。');
-      return;
-    }
-    const room = roomInput.value.trim();
-    if (!room) {
-      alert('請先輸入房間 ID');
-      return;
-    }
-    socket.emit('create_room', { roomId: room });
-  };
-
-  socket.on('create_room_ack', (res) => {
-    if (!res.ok) {
-      if (res.error === 'room_exists') {
-        alert(`房間 ${res.roomId} 已存在。`);
-      } else {
-        alert('建立房間失敗：' + (res.error || '未知錯誤'));
+    function setBankControlsEnabled(enabled) {
+      bankSelect.disabled = !enabled;
+      btnReloadBanks.disabled = !enabled;
+      btnLoadBankQuestions.disabled = !enabled;
+      btnDeleteBank.disabled = !enabled;
+      btnImportBank.disabled = !enabled;
+      if (!enabled) {
+        bankSelect.innerHTML = '<option value="">（請先加入房間）</option>';
+        questionInfo.textContent = '房間模式下，題庫會鎖定在房間內；請先加入房間。';
       }
-    } else {
-      alert(`房間 ${res.roomId} 已建立，請再按「加入房間」。`);
     }
-  });
 
-  document.getElementById('btnJoin').onclick = () => {
-    if(modeSelect.value !== 'room'){
-      alert('請先將模式切到「房間競賽」。');
-      return;
+    function updateModeUI() {
+      const mode = modeSelect.value;
+      const btnCreateRoom = document.getElementById('btnCreateRoom');
+      const btnJoin = document.getElementById('btnJoin');
+      const btnRoomExam = document.getElementById('btnRoomExam');
+
+      if (mode === 'personal') {
+        roomBankCard.style.display = 'none';
+        btnCreateRoom.disabled = true;
+        btnJoin.disabled = true;
+        btnRoomExam.disabled = true;
+        setBankControlsEnabled(false);
+        examInfo.textContent = '目前為「個人刷題」模式：tqcexam 上的題庫與設定皆為個人使用。';
+      } else {
+        roomBankCard.style.display = 'block';
+        btnCreateRoom.disabled = false;
+        btnJoin.disabled = false;
+        btnRoomExam.disabled = false;
+        examInfo.textContent = '目前為「房間競賽」模式：題庫匯入會鎖定在指定房間中。';
+      }
+      saveUserState();
     }
-    const room = roomInput.value.trim();
-    if (!room) {
-      alert('請先輸入房間 ID');
-      return;
+    modeSelect.onchange = updateModeUI;
+
+    function saveUserState() {
+      try {
+        const state = {
+          name: nameInput.value || '',
+          mode: modeSelect.value || 'personal',
+          roomId: roomInput.value || '',
+          roomJoined: joinedRoomId || '',
+          lastBankId: bankSelect.value || '',
+        };
+        localStorage.setItem(USER_STATE_KEY, JSON.stringify(state));
+      } catch (e) { }
     }
-    socket.emit('join_room', { roomId: room });
-  };
 
-  socket.on('joined', (d) => {
-    joinedRoomId = d.roomId;
-    roomInfo.textContent = `已加入房間：${d.roomId}`;
-    log('joined: ' + JSON.stringify(d));
-    setBankControlsEnabled(true);
-    questionInfo.textContent = '請選擇題庫或從本機匯入檔案建立。';
-    socket.emit('list_banks');
-    saveUserState();
-  });
-
-  socket.on('join_error', (res) => {
-    if (res && res.error === 'room_not_found') {
-      alert(`尚未建立房間 ${res.roomId}，請先由房主在 admin.js 或本頁「建立房間」。`);
-    } else {
-      alert('加入房間失敗。');
+    function restoreUserState() {
+      try {
+        const raw = localStorage.getItem(USER_STATE_KEY);
+        if (!raw) return;
+        const st = JSON.parse(raw);
+        if (st.name) nameInput.value = st.name;
+        if (st.mode) modeSelect.value = st.mode;
+        if (st.roomId) roomInput.value = st.roomId;
+        updateModeUI();
+      } catch (e) { }
     }
-  });
 
-  socket.on('bank_list', (banks) => {
-    bankMetaMap = {};
-    bankSelect.innerHTML = '';
-    if (!banks || banks.length === 0) {
-      const opt = document.createElement('option');
-      opt.value = '';
-      opt.textContent = '目前無可用題庫，請匯入。';
-      bankSelect.appendChild(opt);
-      return;
-    }
-    const placeholder = document.createElement('option');
-    placeholder.value = '';
-    placeholder.textContent = '請選擇題庫';
-    bankSelect.appendChild(placeholder);
+    nameInput.addEventListener('input', saveUserState);
+    roomInput.addEventListener('input', saveUserState);
 
-    banks.forEach((b) => {
-      const opt = document.createElement('option');
-      opt.value = b.id;
-      opt.textContent = `${b.name}（${b.count} 題）`;
-      bankSelect.appendChild(opt);
-      bankMetaMap[b.id] = b;
+    document.getElementById('btnGoTqcExam').onclick = () => {
+      saveUserState();
+      if (modeSelect.value === 'personal') {
+        try { localStorage.removeItem(ROOM_RULES_KEY); } catch (e) { }
+      }
+      window.location.href = '/tqcexam.html';
+    };
+
+    document.getElementById('btnLogin').onclick = () => {
+      const name = nameInput.value || 'Player';
+      socket.emit('login', { name });
+    };
+
+    socket.on('login_ack', (d) => {
+      myPlayerId = d.playerId;
+      playerInfo.textContent = `登入成功：ID = ${d.playerId}，Name = ${d.name}`;
+      log('login_ack: ' + JSON.stringify(d));
+
+      // 把玩家基本資料記下來，tqcexam 交卷時會用到
+      try {
+        localStorage.setItem(
+          PLAYER_PROFILE_KEY,
+          JSON.stringify({ playerId: d.playerId, name: d.name })
+        );
+      } catch (e) { }
+
+      if (d.stats && Object.keys(d.stats).length > 0) {
+        myStatsEl.textContent = JSON.stringify(d.stats, null, 2);
+      } else {
+        myStatsEl.textContent = '目前無成績紀錄。';
+      }
+
+      wrongListEl.innerHTML = '';
+      if (d.wrongQuestions && d.wrongQuestions.length > 0) {
+        d.wrongQuestions.forEach((q) => {
+          const li = document.createElement('li');
+          li.textContent = `題號 ${q.id}: ${q.text}（正解：${q.answer}）`;
+          wrongListEl.appendChild(li);
+        });
+      } else {
+        const li = document.createElement('li');
+        li.style.color = '#888';
+        li.textContent = '尚無錯題紀錄。';
+        wrongListEl.appendChild(li);
+      }
     });
 
-    try{
-      const raw = localStorage.getItem(USER_STATE_KEY);
-      if(raw){
-        const st = JSON.parse(raw);
-        if(st.lastBankId && bankMetaMap[st.lastBankId]){
-          bankSelect.value = st.lastBankId;
-        }
+
+    document.getElementById('btnCreateRoom').onclick = () => {
+      if (modeSelect.value !== 'room') {
+        alert('建立房間只在「房間競賽」模式使用。');
+        return;
       }
-    }catch(e){}
-  });
+      const room = roomInput.value.trim();
+      if (!room) {
+        alert('請先輸入房間 ID');
+        return;
+      }
+      socket.emit('create_room', { roomId: room });
+    };
 
-  bankSelect.addEventListener('change', saveUserState);
+    socket.on('create_room_ack', (res) => {
+      if (!res.ok) {
+        if (res.error === 'room_exists') {
+          alert(`房間 ${res.roomId} 已存在。`);
+        } else {
+          alert('建立房間失敗：' + (res.error || '未知錯誤'));
+        }
+      } else {
+        alert(`房間 ${res.roomId} 已建立，請再按「加入房間」。`);
+      }
+    });
 
-  socket.on('bank_error', (e) => {
-    if (e && e.type === 'not_in_room') {
-      alert('請先加入房間，才能存取題庫。');
-    }
-  });
+    document.getElementById('btnJoin').onclick = () => {
+      if (modeSelect.value !== 'room') {
+        alert('請先將模式切到「房間競賽」。');
+        return;
+      }
+      const room = roomInput.value.trim();
+      if (!room) {
+        alert('請先輸入房間 ID');
+        return;
+      }
+      socket.emit('join_room', { roomId: room });
+    };
 
-  btnReloadBanks.onclick = () => {
-    if (!joinedRoomId) {
-      alert('請先加入房間。');
-      return;
-    }
-    socket.emit('list_banks');
-  };
+    socket.on('joined', (d) => {
+      joinedRoomId = d.roomId;
+      roomInfo.textContent = `已加入房間：${d.roomId}`;
+      log('joined: ' + JSON.stringify(d));
+      setBankControlsEnabled(true);
+      questionInfo.textContent = '請選擇題庫或從本機匯入檔案建立。';
+      socket.emit('list_banks');
+      saveUserState();
+    });
 
-  btnLoadBankQuestions.onclick = () => {
-    if (!joinedRoomId) {
-      alert('請先加入房間。');
-      return;
-    }
-    const bankId = bankSelect.value;
-    if (!bankId) {
-      alert('請先選擇 Redis 題庫');
-      return;
-    }
-    socket.emit('load_bank_questions', { bankId });
-  };
+    socket.on('join_error', (res) => {
+      if (res && res.error === 'room_not_found') {
+        alert(`尚未建立房間 ${res.roomId}，請先由房主在 admin.js 或本頁「建立房間」。`);
+      } else {
+        alert('加入房間失敗。');
+      }
+    });
 
-  btnDeleteBank.onclick = () => {
-    const bankId = bankSelect.value;
-    if (!bankId) {
-      alert('請先選擇要刪除的題庫');
-      return;
-    }
-    if (!confirm(`確定要刪除題庫 ${bankId} 嗎？此動作無法復原。`)) return;
-    socket.emit('delete_bank', { bankId });
-  };
+    socket.on('bank_list', (banks) => {
+      bankMetaMap = {};
+      bankSelect.innerHTML = '';
+      if (!banks || banks.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '目前無可用題庫，請匯入。';
+        bankSelect.appendChild(opt);
+        return;
+      }
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '請選擇題庫';
+      bankSelect.appendChild(placeholder);
 
-  socket.on('bank_questions', (payload) => {
-    const { bankId, questions } = payload;
-    const count = (questions || []).length;
-    if (count === 0) {
-      questionInfo.textContent = `題庫 ${bankId} 暫無題目。`;
-    } else {
-      questionInfo.textContent = `題庫 ${bankId} 共有 ${count} 題，可做為房間競賽的題庫來源。`;
-    }
-  });
+      banks.forEach((b) => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.textContent = `${b.name}（${b.count} 題）`;
+        bankSelect.appendChild(opt);
+        bankMetaMap[b.id] = b;
+      });
 
-  socket.on('delete_bank_ack', (res) => {
-    if (!res.ok) {
-      alert('刪除題庫失敗：' + (res.error === 'not_found' ? '找不到題庫' : '未知錯誤'));
-      return;
-    }
-    alert(`已刪除題庫 ${res.bankId}`);
-    socket.emit('list_banks');
-  });
+      try {
+        const raw = localStorage.getItem(USER_STATE_KEY);
+        if (raw) {
+          const st = JSON.parse(raw);
+          if (st.lastBankId && bankMetaMap[st.lastBankId]) {
+            bankSelect.value = st.lastBankId;
+          }
+        }
+      } catch (e) { }
+    });
 
-  btnImportBank.onclick = () => {
-    if (!joinedRoomId) {
-      alert('請先加入房間。');
-      return;
-    }
-    const file = bankFileInput.files[0];
-    if (!file) {
-      alert('請先選擇 JSON / CSV 題庫檔。');
-      return;
-    }
-    const bankId = bankIdInput.value.trim() || file.name.replace(/\\.[^.]+$/, '');
-    const bankName = bankNameInput.value.trim();
+    bankSelect.addEventListener('change', saveUserState);
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const content = reader.result;
-      socket.emit('import_bank_text', {
+    socket.on('bank_error', (e) => {
+      if (e && e.type === 'not_in_room') {
+        alert('請先加入房間，才能存取題庫。');
+      }
+    });
+
+    btnReloadBanks.onclick = () => {
+      if (!joinedRoomId) {
+        alert('請先加入房間。');
+        return;
+      }
+      socket.emit('list_banks');
+    };
+
+    btnLoadBankQuestions.onclick = () => {
+      if (!joinedRoomId) {
+        alert('請先加入房間。');
+        return;
+      }
+      const bankId = bankSelect.value;
+      if (!bankId) {
+        alert('請先選擇 Redis 題庫');
+        return;
+      }
+      socket.emit('load_bank_questions', { bankId });
+    };
+
+    btnDeleteBank.onclick = () => {
+      const bankId = bankSelect.value;
+      if (!bankId) {
+        alert('請先選擇要刪除的題庫');
+        return;
+      }
+      if (!confirm(`確定要刪除題庫 ${bankId} 嗎？此動作無法復原。`)) return;
+      socket.emit('delete_bank', { bankId });
+    };
+
+    socket.on('bank_questions', (payload) => {
+      const { bankId, questions } = payload;
+      const count = (questions || []).length;
+      if (count === 0) {
+        questionInfo.textContent = `題庫 ${bankId} 暫無題目。`;
+      } else {
+        questionInfo.textContent = `題庫 ${bankId} 共有 ${count} 題，可做為房間競賽的題庫來源。`;
+      }
+    });
+
+    socket.on('delete_bank_ack', (res) => {
+      if (!res.ok) {
+        alert('刪除題庫失敗：' + (res.error === 'not_found' ? '找不到題庫' : '未知錯誤'));
+        return;
+      }
+      alert(`已刪除題庫 ${res.bankId}`);
+      socket.emit('list_banks');
+    });
+
+    btnImportBank.onclick = () => {
+      if (!joinedRoomId) {
+        alert('請先加入房間。');
+        return;
+      }
+      const file = bankFileInput.files[0];
+      if (!file) {
+        alert('請先選擇 JSON / CSV 題庫檔。');
+        return;
+      }
+      const bankId = bankIdInput.value.trim() || file.name.replace(/\\.[^.]+$/, '');
+      const bankName = bankNameInput.value.trim();
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const content = reader.result;
+        socket.emit('import_bank_text', {
+          bankId,
+          bankName,
+          filename: file.name,
+          content
+        });
+      };
+      reader.readAsText(file, 'utf-8');
+    };
+
+    socket.on('import_bank_ack', (res) => {
+      if (!res.ok) {
+        let msg = '匯入題庫失敗：';
+        if (res.error === 'not_in_room') msg += '請先加入房間。';
+        else if (res.error === 'parse_error') msg += '檔案格式解析錯誤。';
+        else if (res.error === 'empty_file') msg += '檔案內容為空。';
+        else msg += '未知錯誤。';
+        alert(msg);
+        return;
+      }
+      alert(`已在房間 ${res.roomId} 建立題庫 ${res.bankId}，共 ${res.count} 題。`);
+      bankFileInput.value = '';
+      bankIdInput.value = '';
+      bankNameInput.value = '';
+      socket.emit('list_banks');
+    });
+
+    setBankControlsEnabled(false);
+
+    document.getElementById('btnRoomExam').onclick = () => {
+      if (modeSelect.value !== 'room') {
+        alert('請先將模式切換為「房間競賽」。');
+        return;
+      }
+      if (!joinedRoomId) {
+        alert('請先加入房間（按 Join Room）');
+        return;
+      }
+      const bankId = bankSelect.value;
+      if (!bankId) {
+        alert('請先在上方選擇 Redis 題庫');
+        return;
+      }
+      const meta = bankMetaMap[bankId];
+      const maxCount = meta ? meta.count : 50;
+
+      const qCountStr = prompt(`請輸入本次測驗題數（最多 ${maxCount} 題）`, Math.min(10, maxCount));
+      if (qCountStr === null) return;
+      const qCount = parseInt(qCountStr, 10) || 0;
+      if (qCount <= 0) {
+        alert('題數必須大於 0');
+        return;
+      }
+
+      const timeStr = prompt('請輸入作答時間（分鐘）', '10');
+      if (timeStr === null) return;
+      const timeLimitMinutes = parseInt(timeStr, 10) || 0;
+      if (timeLimitMinutes <= 0) {
+        alert('時間必須大於 0');
+        return;
+      }
+
+      socket.emit('start_room_exam', {
+        roomId: joinedRoomId,
         bankId,
-        bankName,
-        filename: file.name,
-        content
+        questionCount: qCount,
+        timeLimitMinutes
       });
     };
-    reader.readAsText(file, 'utf-8');
-  };
 
-  socket.on('import_bank_ack', (res) => {
-    if (!res.ok) {
-      let msg = '匯入題庫失敗：';
-      if (res.error === 'not_in_room') msg += '請先加入房間。';
-      else if (res.error === 'parse_error') msg += '檔案格式解析錯誤。';
-      else if (res.error === 'empty_file') msg += '檔案內容為空。';
-      else msg += '未知錯誤。';
-      alert(msg);
-      return;
-    }
-    alert(`已在房間 ${res.roomId} 建立題庫 ${res.bankId}，共 ${res.count} 題。`);
-    bankFileInput.value = '';
-    bankIdInput.value = '';
-    bankNameInput.value = '';
-    socket.emit('list_banks');
-  });
-
-  setBankControlsEnabled(false);
-
-  document.getElementById('btnRoomExam').onclick = () => {
-    if (modeSelect.value !== 'room') {
-      alert('請先將模式切換為「房間競賽」。');
-      return;
-    }
-    if (!joinedRoomId) {
-      alert('請先加入房間（按 Join Room）');
-      return;
-    }
-    const bankId = bankSelect.value;
-    if (!bankId) {
-      alert('請先在上方選擇 Redis 題庫');
-      return;
-    }
-    const meta = bankMetaMap[bankId];
-    const maxCount = meta ? meta.count : 50;
-
-    const qCountStr = prompt(`請輸入本次測驗題數（最多 ${maxCount} 題）`, Math.min(10, maxCount));
-    if (qCountStr === null) return;
-    const qCount = parseInt(qCountStr, 10) || 0;
-    if (qCount <= 0) {
-      alert('題數必須大於 0');
-      return;
-    }
-
-    const timeStr = prompt('請輸入作答時間（分鐘）', '10');
-    if (timeStr === null) return;
-    const timeLimitMinutes = parseInt(timeStr, 10) || 0;
-    if (timeLimitMinutes <= 0) {
-      alert('時間必須大於 0');
-      return;
-    }
-
-    socket.emit('start_room_exam', {
-      roomId: joinedRoomId,
-      bankId,
-      questionCount: qCount,
-      timeLimitMinutes
-    });
-  };
-
-  socket.on('room_exam_ack', (res) => {
-    if (!res.ok) {
-      if (res.error === 'not_host') {
-        alert('此房間已有房主設定規則，只有原本房主可以重新設定。');
-      } else if (res.error === 'empty_bank') {
-        alert('選取的題庫目前沒有題目。');
+    socket.on('room_exam_ack', (res) => {
+      if (!res.ok) {
+        if (res.error === 'not_host') {
+          alert('此房間已有房主設定規則，只有原本房主可以重新設定。');
+        } else if (res.error === 'empty_bank') {
+          alert('選取的題庫目前沒有題目。');
+        } else {
+          alert('啟動多題測驗失敗：' + (res.error || '未知錯誤'));
+        }
       } else {
-        alert('啟動多題測驗失敗：' + (res.error || '未知錯誤'));
+        alert('房間多題測驗已啟動，所有房內玩家即將前往作答頁面。');
       }
-    } else {
-      alert('房間多題測驗已啟動，所有房內玩家即將前往作答頁面。');
-    }
-  });
+    });
 
-  socket.on('room_event', (m) => {
-    log('room_event: ' + JSON.stringify(m));
+    socket.on('room_event', (m) => {
+      log('room_event: ' + JSON.stringify(m));
 
-    if (m.type === 'session_start') {
-      examInfo.textContent =
-        `房間多題測驗開始：題庫 ${m.bankId}，共 ${m.questionCount} 題，限時 ${m.timeLimitMinutes} 分。`;
+      if (m.type === 'session_start') {
+        examInfo.textContent =
+          `房間多題測驗開始：題庫 ${m.bankId}，共 ${m.questionCount} 題，限時 ${m.timeLimitMinutes} 分。`;
 
-      try{
-        localStorage.setItem(ROOM_RULES_KEY, JSON.stringify({
-          roomId: m.roomId,
-          bankId: m.bankId,
-          questionCount: m.questionCount,
-          timeLimitMinutes: m.timeLimitMinutes,
-          questions: m.questions || []
-        }));
-      }catch(e){
-        console.error('save room rules failed', e);
+        try {
+          localStorage.setItem(ROOM_RULES_KEY, JSON.stringify({
+            roomId: m.roomId,
+            bankId: m.bankId,
+            questionCount: m.questionCount,
+            timeLimitMinutes: m.timeLimitMinutes,
+            questions: m.questions || []
+          }));
+        } catch (e) {
+          console.error('save room rules failed', e);
+        }
+
+        saveUserState();
+        window.location.href = '/tqcexam.html';
       }
+    });
 
-      saveUserState();
-      window.location.href = '/tqcexam.html';
-    }
-  });
+    socket.on('leaderboard_update', (top) => {
+      if (!top || top.length === 0) {
+        leaderEl.textContent = '目前尚無排行榜資料。';
+        return;
+      }
+      let lines = [];
+      for (let i = 0; i < top.length; i += 2) {
+        const rank = i / 2 + 1;
+        lines.push(`${rank}. ${top[i]} => ${top[i + 1]}`);
+      }
+      leaderEl.textContent = lines.join('\\n');
+    });
 
-  socket.on('leaderboard_update', (top) => {
-    if (!top || top.length === 0) {
-      leaderEl.textContent = '目前尚無排行榜資料。';
-      return;
-    }
-    let lines = [];
-    for (let i = 0; i < top.length; i += 2) {
-      const rank = i / 2 + 1;
-      lines.push(`${rank}. ${top[i]} => ${top[i + 1]}`);
-    }
-    leaderEl.textContent = lines.join('\\n');
-  });
+    socket.on('connect', () => log('socket connected'));
+    socket.on('disconnect', () => log('socket disconnected'));
 
-  socket.on('connect', () => log('socket connected'));
-  socket.on('disconnect', () => log('socket disconnected'));
-
-  (function initialLoad(){
-    restoreUserState();
-    updateModeUI();
-  })();
-</script>
+    (function initialLoad() {
+      restoreUserState();
+      updateModeUI();
+    })();
+  </script>
 </body>
+
 </html>

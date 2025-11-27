@@ -40,6 +40,15 @@ const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: { origin: '*' }
 });
+// === 成績 / 錯題本 / 排行榜 用 key ===
+const LEADER_KEY = 'flashbattle:leaderboard';
+const userStatsKey = (playerId) => `flashbattle:user:stats:${playerId}`;
+const userWrongKey = (playerId) => `flashbattle:user:wrong:${playerId}`;
+
+// 讓 Express 能吃 JSON body
+app.use(express.json({ limit: '1mb' }));
+
+
 
 // 靜態檔案：直接把整個專案資料夾當靜態目錄
 app.use(express.static(__dirname));
@@ -190,27 +199,121 @@ function normalizeJSONQuestions(data) {
     return { topic, text, options, answers, type, explanation };
   }).filter(q => q.text && q.options.length >= 2);
 }
+// === 接收 tqcexam 送來的考試成績 ===
+app.post('/api/exam_result', async (req, res) => {
+  try {
+    const {
+      playerId,
+      name,
+      mode,
+      roomId,
+      bankId,
+      score,
+      total,
+      correctCount,
+      wrongQuestions
+    } = req.body || {};
+
+    if (!playerId) {
+      return res.status(400).json({ ok: false, error: 'missing_player' });
+    }
+
+    const stats = {
+      playerId,
+      name,
+      mode: mode || 'personal',
+      lastRoomId: roomId || '',
+      bankId: bankId || '',
+      lastScore: Number(score) || 0,
+      totalQuestions: Number(total) || 0,
+      lastCorrect: Number(correctCount) || 0,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // 1) 存「我的成績」
+    await redis.set(userStatsKey(playerId), JSON.stringify(stats));
+
+    // 2) 累積「我的錯題本」
+    if (Array.isArray(wrongQuestions) && wrongQuestions.length > 0) {
+      let merged = [];
+      const existed = await redis.get(userWrongKey(playerId));
+      if (existed) {
+        try { merged = JSON.parse(existed) || []; } catch (e) { }
+      }
+      merged = merged.concat(wrongQuestions);
+      await redis.set(userWrongKey(playerId), JSON.stringify(merged));
+    }
+
+    // 3) 更新排行榜（Sorted Set）
+    await redis.zAdd(LEADER_KEY, [
+      { score: Number(score) || 0, value: String(playerId) }
+    ]);
+
+    // 4) 把最新排行榜廣播給所有人
+    try {
+      const top = await redis.zRange(LEADER_KEY, 0, 9, {
+        REV: true,
+        WITHSCORES: true,
+      });
+      io.emit('leaderboard_update', top);
+    } catch (e) {
+      console.error('[leaderboard] refresh failed', e);
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('/api/exam_result error', err);
+    res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
 
 // ===== Socket.IO 事件 =====
 io.on('connection', (socket) => {
   console.log('client connected', socket.id);
 
   // ---- 登入 ----
-  socket.on('login', async ({ name, userId }) => {
-    const id = (userId && userId.trim()) || (name && name.trim()) || socket.id;
-    socket.data.userId = id;
-    socket.data.name = name || id;
+  socket.on('login', async ({ name }) => {
+    const playerId = socket.id;
+    socket.data.playerId = playerId;
 
-    const stats = {};
-    const wrongQuestions = [];
+    let stats = {};
+    let wrongQuestions = [];
+
+    try {
+      const [statsRaw, wrongRaw] = await redis.mGet(
+        userStatsKey(playerId),
+        userWrongKey(playerId)
+      );
+      if (statsRaw) {
+        stats = JSON.parse(statsRaw);
+      }
+      if (wrongRaw) {
+        wrongQuestions = JSON.parse(wrongRaw);
+      }
+    } catch (e) {
+      console.error('load user profile failed', e);
+    }
 
     socket.emit('login_ack', {
-      playerId: id,
-      name: socket.data.name,
+      playerId,
+      name,
       stats,
       wrongQuestions
     });
+
+    // 順便給這個人目前排行榜（不用就算，但這樣一登入就看到）
+    try {
+      const top = await redis.zRange(LEADER_KEY, 0, 9, {
+        REV: true,
+        WITHSCORES: true,
+      });
+      socket.emit('leaderboard_update', top);
+    } catch (e) {
+      console.error('send initial leaderboard failed', e);
+    }
   });
+
 
   // ---- 建立房間 ----
   socket.on('create_room', async ({ roomId }) => {
@@ -351,7 +454,7 @@ io.on('connection', (socket) => {
     const settingsJson = await redis.get(settingsKey);
     let settings = {};
     if (settingsJson) {
-      try { settings = JSON.parse(settingsJson); } catch {}
+      try { settings = JSON.parse(settingsJson); } catch { }
     }
     const currentUserId = socket.data?.userId || socket.id;
     if (settings.hostId && settings.hostId !== currentUserId) {
