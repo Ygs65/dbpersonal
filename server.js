@@ -20,18 +20,17 @@ const __dirname = path.dirname(__filename);
 let redis;
 
 if (process.env.REDIS_URL) {
-  redis = new Redis(process.env.REDIS_URL, {
-    // Redis Cloud 多半需要 TLS，rediss:// 會自動啟用
-    // 這裡保險起見再補上一個 tls 設定
-    tls: {}
-  });
-  console.log('[Redis] connect via REDIS_URL');
+  // ✅ 有設定 REDIS_URL（雲端 / 本機 .env），就直接用那個字串
+  // ioredis 會自動根據 rediss:// or redis:// 決定要不要用 TLS
+  console.log('[Redis] connect via REDIS_URL:', process.env.REDIS_URL);
+  redis = new Redis(process.env.REDIS_URL);
 } else {
+  // ✅ 沒設定 REDIS_URL 時，才用本機 Redis（只給你在自己電腦測試用）
+  console.log('[Redis] connect to local 127.0.0.1:6379');
   redis = new Redis({
     host: '127.0.0.1',
     port: 6379
   });
-  console.log('[Redis] connect to 127.0.0.1:6379');
 }
 
 redis.on('error', (err) => {
