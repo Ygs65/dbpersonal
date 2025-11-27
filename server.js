@@ -1,7 +1,6 @@
 // server.js
-// FlashBattle + 房間競賽 + Redis 題庫
-// 本機：node server.js
-// Render：設定 REDIS_URL (建議 rediss://...)，或使用本機 Redis
+// FlashBattle + 房間競賽 + Redis 題庫 (本機端 Redis)
+// 使用：node server.js
 
 import express from 'express';
 import http from 'http';
@@ -13,22 +12,14 @@ import Redis from 'ioredis';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ===== Redis 連線設定 =====
-// 建議：在 Render / 本機 .env 設定：
-//   REDIS_URL = rediss://default:密碼@redis-17825.c267.us-east-1-4.ec2.cloud.redislabs.com:17825
-// 若沒設定 REDIS_URL，則改用本機 127.0.0.1:6379
-let redis;
+// ===== Redis 連線 =====
+// 優先使用環境變數 REDIS_URL（Render Key-Value Internal URL），沒有時改用本機 127.0.0.1:6379
+const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const redis = new Redis(redisUrl);
 
-if (process.env.REDIS_URL) {
-  console.log('[Redis] connect via REDIS_URL:', process.env.REDIS_URL);
-  redis = new Redis(process.env.REDIS_URL);   // ✅ 直接吃 URL，不加 tls
-} else {
-  console.log('[Redis] connect to local 127.0.0.1:6379');
-  redis = new Redis({
-    host: '127.0.0.1',
-    port: 6379
-  });
-}
+redis.on('connect', () => {
+  console.log('[Redis] connected to', redisUrl);
+});
 
 redis.on('error', (err) => {
   console.error('[Redis] error:', err);
@@ -38,16 +29,10 @@ redis.on('error', (err) => {
 const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
-  cors: { origin: '*' }
+  cors: {
+    origin: '*'
+  }
 });
-// === 成績 / 錯題本 / 排行榜 用 key ===
-const LEADER_KEY = 'flashbattle:leaderboard';
-const userStatsKey = (playerId) => `flashbattle:user:stats:${playerId}`;
-const userWrongKey = (playerId) => `flashbattle:user:wrong:${playerId}`;
-
-// 讓 Express 能吃 JSON body
-app.use(express.json({ limit: '1mb' }));
-
 
 
 // 靜態檔案：直接把整個專案資料夾當靜態目錄
@@ -62,6 +47,11 @@ app.get('/', (req, res) => {
 const ROOM_SETTINGS_KEY = (roomId) => `room:${roomId}:settings`;
 const ROOM_EXAM_KEY = (roomId) => `room:${roomId}:exam`;
 const BANK_KEY = (roomId, bankId) => `bank:${roomId}:${bankId}`;
+
+// 排行榜、個人成績、錯題本 Redis Key
+const LEADER_KEY = 'leaderboard:global';
+const USER_STATS_KEY = (userId) => `user:${userId}:stats`;
+const USER_WRONG_KEY = (userId) => `user:${userId}:wrongbook`;
 
 // 洗牌
 function shuffle(arr) {
@@ -199,7 +189,9 @@ function normalizeJSONQuestions(data) {
     return { topic, text, options, answers, type, explanation };
   }).filter(q => q.text && q.options.length >= 2);
 }
-// === 接收 tqcexam 送來的考試成績 ===
+
+
+// ===== 接收考試結果（單人 / 房間） =====
 app.post('/api/exam_result', async (req, res) => {
   try {
     const {
@@ -220,42 +212,37 @@ app.post('/api/exam_result', async (req, res) => {
 
     const stats = {
       playerId,
-      name,
+      name: name || playerId,
       mode: mode || 'personal',
       lastRoomId: roomId || '',
       bankId: bankId || '',
       lastScore: Number(score) || 0,
       totalQuestions: Number(total) || 0,
       lastCorrect: Number(correctCount) || 0,
-      updatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
     // 1) 存「我的成績」
-    await redis.set(userStatsKey(playerId), JSON.stringify(stats));
+    await redis.set(USER_STATS_KEY(playerId), JSON.stringify(stats));
 
     // 2) 累積「我的錯題本」
     if (Array.isArray(wrongQuestions) && wrongQuestions.length > 0) {
       let merged = [];
-      const existed = await redis.get(userWrongKey(playerId));
+      const existed = await redis.get(USER_WRONG_KEY(playerId));
       if (existed) {
-        try { merged = JSON.parse(existed) || []; } catch (e) { }
+        try { merged = JSON.parse(existed) || []; } catch (e) { merged = []; }
       }
       merged = merged.concat(wrongQuestions);
-      await redis.set(userWrongKey(playerId), JSON.stringify(merged));
+      await redis.set(USER_WRONG_KEY(playerId), JSON.stringify(merged));
     }
 
     // 3) 更新排行榜（Sorted Set）
-    await redis.zAdd(LEADER_KEY, [
-      { score: Number(score) || 0, value: String(playerId) }
-    ]);
+    await redis.zadd(LEADER_KEY, score || 0, String(playerId));
 
-    // 4) 把最新排行榜廣播給所有人
+    // 4) 廣播最新排行榜
     try {
-      const top = await redis.zRange(LEADER_KEY, 0, 9, {
-        REV: true,
-        WITHSCORES: true,
-      });
-      io.emit('leaderboard_update', top);
+      const top = await redis.zrevrange(LEADER_KEY, 0, 9, 'WITHSCORES');
+      io.emit('leaderboard_update', top || []);
     } catch (e) {
       console.error('[leaderboard] refresh failed', e);
     }
@@ -272,18 +259,19 @@ app.post('/api/exam_result', async (req, res) => {
 io.on('connection', (socket) => {
   console.log('client connected', socket.id);
 
-  // ---- 登入 ----
-  socket.on('login', async ({ name }) => {
-    const playerId = socket.id;
-    socket.data.playerId = playerId;
+  // ---- 登入：使用者自己填的名稱就是 userId ----
+  socket.on('login', async ({ name, userId }) => {
+    const id = (userId && userId.trim()) || (name && name.trim()) || socket.id;
+    socket.data.userId = id;
+    socket.data.name = name || id;
 
     let stats = {};
     let wrongQuestions = [];
 
     try {
-      const [statsRaw, wrongRaw] = await redis.mGet(
-        userStatsKey(playerId),
-        userWrongKey(playerId)
+      const [statsRaw, wrongRaw] = await redis.mget(
+        USER_STATS_KEY(id),
+        USER_WRONG_KEY(id)
       );
       if (statsRaw) {
         stats = JSON.parse(statsRaw);
@@ -292,28 +280,24 @@ io.on('connection', (socket) => {
         wrongQuestions = JSON.parse(wrongRaw);
       }
     } catch (e) {
-      console.error('load user profile failed', e);
+      console.error('[login] load user stats failed:', e);
     }
 
     socket.emit('login_ack', {
-      playerId,
-      name,
+      playerId: id,
+      name: socket.data.name,
       stats,
       wrongQuestions
     });
 
-    // 順便給這個人目前排行榜（不用就算，但這樣一登入就看到）
+    // 初次登入時，也送一份排行榜
     try {
-      const top = await redis.zRange(LEADER_KEY, 0, 9, {
-        REV: true,
-        WITHSCORES: true,
-      });
-      socket.emit('leaderboard_update', top);
+      const top = await redis.zrevrange(LEADER_KEY, 0, 9, 'WITHSCORES');
+      socket.emit('leaderboard_update', top || []);
     } catch (e) {
-      console.error('send initial leaderboard failed', e);
+      console.error('[login] load leaderboard failed:', e);
     }
   });
-
 
   // ---- 建立房間 ----
   socket.on('create_room', async ({ roomId }) => {
@@ -454,7 +438,7 @@ io.on('connection', (socket) => {
     const settingsJson = await redis.get(settingsKey);
     let settings = {};
     if (settingsJson) {
-      try { settings = JSON.parse(settingsJson); } catch { }
+      try { settings = JSON.parse(settingsJson); } catch {}
     }
     const currentUserId = socket.data?.userId || socket.id;
     if (settings.hostId && settings.hostId !== currentUserId) {
@@ -507,7 +491,7 @@ io.on('connection', (socket) => {
 });
 
 // ===== 啟動伺服器 =====
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
+const PORT = 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });

@@ -303,16 +303,12 @@
       font-size: .75rem;
       margin-left: 4px;
     }
-
-    .hidden {
-      display: none;
-    }
   </style>
 </head>
 
 <body>
   <button onclick="window.location.href='/'"
-    style="position:fixed;top:8px;left:8px;padding:6px 12px;border-radius:999px;border:none;background:#1976d2;color:#fff;cursor:pointer;z-index:10;">
+    style="margin:10px 0;padding:6px 12px;border-radius:999px;border:none;background:#1976d2;color:#fff;cursor:pointer;">
     回到 FlashBattle 主頁
   </button>
   <div class="app">
@@ -323,6 +319,7 @@
       <button class="tab-btn" data-tab="manage">題庫管理</button>
     </div>
 
+    <!-- 刷題區 -->
     <div id="quiz" class="section active">
       <div class="row">
         <label for="quizBankSelect">選擇題庫：</label>
@@ -373,6 +370,7 @@
       <div id="questionsContainer"></div>
     </div>
 
+    <!-- 題庫管理區 -->
     <div id="manage" class="section">
       <div class="card">
         <div class="card-title">匯入題庫（JSON / CSV）</div>
@@ -427,9 +425,8 @@
 
   <script>
     const STORAGE_KEY = "customQuizBanks_allInOnePage_v4";
-    const ROOM_RULES_KEY = 'fb_room_exam_rules';
-    const USER_STATE_KEY = 'fb_user_state_v1';
-    const PLAYER_PROFILE_KEY = 'fb_player_profile_v1';
+    const ROOM_RULES_KEY = "fb_room_exam_rules";  // 從 index 存進來的房間規則
+    const PLAYER_PROFILE_KEY = "fb_player_profile_v1";
 
 
     function loadBanks() {
@@ -448,12 +445,12 @@
     let roomRules = null;
     try {
       const r = localStorage.getItem(ROOM_RULES_KEY);
-      if (r) roomRules = JSON.parse(r);
+      if (r) {
+        roomRules = JSON.parse(r);
+      }
     } catch (e) {
       console.error("讀取房間規則失敗", e);
-      roomRules = null;
     }
-
     if (banks.length === 0) {
       banks = [{
         id: "sample-" + Date.now(),
@@ -468,6 +465,15 @@
             answers: [2],
             type: "single",
             explanation: "boolean（布林值）用來表示 true / false。"
+          },
+          {
+            id: 2,
+            topic: "多選示範",
+            text: "下列哪些屬於前端技術？",
+            options: ["HTML", "CSS", "JavaScript", "MySQL"],
+            answers: [0, 1, 2],
+            type: "multi",
+            explanation: "HTML / CSS / JavaScript 通常用在前端，MySQL 是資料庫。"
           }
         ]
       }];
@@ -506,61 +512,28 @@
     const importTextArea = document.getElementById("importText");
     const importBtn = document.getElementById("importBtn");
     const downloadTemplateBtn = document.getElementById("downloadTemplateBtn");
+    function applyRoomRulesIfAny() {
+      if (!roomRules) return;
 
-    function parseAnswerString(ansStr, optionCount) {
-      if (!ansStr) return [];
-      const raw = String(ansStr).trim();
-      if (!raw) return [];
-      const parts = raw.split(/[,，\s]+/).filter(Boolean);
-      const set = new Set();
-      parts.forEach(p => {
-        const t = p.trim().toUpperCase();
-        if (!t) return;
-        if (/^[A-F]$/.test(t)) {
-          const idx = t.charCodeAt(0) - 65;
-          if (idx >= 0 && idx < optionCount) set.add(idx);
-          return;
-        }
-        const n = parseInt(t, 10);
-        if (!isNaN(n) && n >= 1 && n <= optionCount) {
-          set.add(n - 1);
-        }
-      });
-      return Array.from(set).sort((a, b) => a - b);
+      // 題數與時間自動帶入（秒轉分鐘）
+      if (roomRules.questionCount) {
+        questionCountInput.value = roomRules.questionCount;
+      }
+      if (roomRules.timeLimitSeconds) {
+        const mins = Math.ceil(roomRules.timeLimitSeconds / 60);
+        timeLimitInput.value = mins;
+      }
+
+      // 顯示提示文字
+      const info = document.createElement("div");
+      info.className = "small";
+      info.style.color = "#d32f2f";
+      info.style.marginBottom = "6px";
+      info.textContent =
+        `目前依照房間 ${roomRules.roomId || ""} 規則作答：題數 ${roomRules.questionCount || "未指定"} 題、時間約 ${roomRules.timeLimitSeconds ? Math.ceil(roomRules.timeLimitSeconds / 60) : "-"} 分。若改成個人練習，可自行修改上方欄位。`;
+      sessionSummaryDiv.parentNode.insertBefore(info, sessionSummaryDiv);
     }
 
-    function normalizeRoomQuestions(roomQs) {
-      if (!Array.isArray(roomQs)) return [];
-      const result = [];
-      roomQs.forEach((q, idx) => {
-        const topic = q.topic || q.主題 || "";
-        const text = q.text || q.question || q.題目 || "";
-        const options = Array.isArray(q.options) ? q.options.slice() : [];
-        if (!text || options.length < 2) return;
-
-        let answersArr = [];
-        if (Array.isArray(q.answers) && q.answers.length > 0) {
-          answersArr = q.answers.map(x => Number(x)).filter(x => !isNaN(x));
-        } else if (q.answer != null) {
-          answersArr = parseAnswerString(q.answer, options.length);
-        }
-        if (answersArr.length === 0) answersArr = [0];
-
-        const type = q.type || (answersArr.length > 1 ? "multi" : "single");
-        const explanation = q.explanation || q.解析 || q.explain || "";
-
-        result.push({
-          id: q.id || (idx + 1),
-          topic,
-          text,
-          options,
-          answers: answersArr,
-          type,
-          explanation
-        });
-      });
-      return result;
-    }
 
     let currentBank = null,
       sessionIndices = [],
@@ -947,7 +920,7 @@
           remainingSeconds = 0;
           updateTimeDisplay();
           stopTimer();
-          gradeAll(true);
+          gradeAll(true); // 時間到自動批改（不再詢問）
         } else {
           updateTimeDisplay();
         }
@@ -989,102 +962,10 @@
     function updateSessionProgressSummary() {
       const total = sessionIndices.length;
       if (total === 0) return;
-      const score = Math.round((correctCount * 100) / total);
+      const score = Math.round((correctCount * 100) / total); // 滿分100
       const base = sessionSummaryDiv.textContent.split("｜ 已作答")[0];
       sessionSummaryDiv.textContent =
         `${base} ｜ 已作答：${answeredCount}/${total} 題，答對：${correctCount} 題 ｜ 本次得分：${score} 分`;
-    }
-
-    function markQuestionWrong(qIndex) {
-      const q = currentBank.questions[qIndex];
-      if (!q.wrong) {
-        q.wrong = true;
-        saveBanks(banks);
-        refreshBankSelects();
-      }
-    }
-
-    function onSingleOptionClick(card, btn) {
-      if (!sessionActive) return;
-      const qIndex = parseInt(card.dataset.qIndex, 10);
-      if (answeredMap[qIndex]?.graded) return;
-      const buttons = card.querySelectorAll(".option-btn");
-      buttons.forEach(b => b.classList.remove("selected"));
-      btn.classList.add("selected");
-    }
-
-    function onMultiOptionClick(card, btn) {
-      if (!sessionActive) return;
-      const qIndex = parseInt(card.dataset.qIndex, 10);
-      if (answeredMap[qIndex]?.graded) return;
-      btn.classList.toggle("selected");
-    }
-
-    function showExplanation(card) {
-      const qIndex = parseInt(card.dataset.qIndex, 10);
-      const q = currentBank.questions[qIndex];
-      const expDiv = card.querySelector(".q-explanation");
-      const buttons = card.querySelectorAll(".option-btn");
-      const answers = Array.isArray(q.answers) ? q.answers : [q.answers];
-      buttons.forEach((b, idx) => {
-        if (answers.includes(idx)) b.classList.add("correct");
-      });
-      expDiv.textContent = "解析：" + (q.explanation && q.explanation.trim() !== "" ? q.explanation : "此題沒有額外解析說明。");
-      expDiv.style.display = "block";
-    }
-
-    function renderQuestions(indices) {
-      questionsContainer.innerHTML = "";
-      indices.forEach((qIdx, i) => {
-        const q = currentBank.questions[qIdx];
-        const card = document.createElement("div");
-        card.className = "q-card";
-        card.dataset.qIndex = qIdx;
-        const isMulti = q.type === "multi" || (Array.isArray(q.answers) && q.answers.length > 1);
-        const typeText = isMulti ? "多選" : "單選";
-
-        const header = document.createElement("div");
-        header.className = "q-header";
-        header.innerHTML =
-          `<span>第 ${i + 1} 題（${typeText}）</span>
-           <span class="q-topic">${q.topic ? ("主題：" + q.topic) : ""}</span>`;
-
-        const textDiv = document.createElement("div");
-        textDiv.className = "q-text";
-        textDiv.textContent = q.text;
-
-        const optsDiv = document.createElement("div");
-        optsDiv.className = "options";
-        q.options.forEach((optText, idx) => {
-          const btn = document.createElement("button");
-          btn.className = "option-btn";
-          btn.textContent = String.fromCharCode(65 + idx) + ". " + optText;
-          btn.dataset.optionIndex = idx;
-          if (isMulti) btn.onclick = () => onMultiOptionClick(card, btn);
-          else btn.onclick = () => onSingleOptionClick(card, btn);
-          optsDiv.appendChild(btn);
-        });
-
-        const footer = document.createElement("div");
-        footer.className = "q-footer";
-        const statusSpan = document.createElement("span");
-        statusSpan.className = "q-footer-status";
-        statusSpan.textContent = "尚未批改";
-
-        const showExpBtn = document.createElement("button");
-        showExpBtn.className = "btn-small btn-outline";
-        showExpBtn.textContent = isMulti ? "看正解 / 解析" : "看解析";
-        showExpBtn.onclick = () => showExplanation(card);
-
-        footer.appendChild(showExpBtn);
-        footer.appendChild(statusSpan);
-
-        const expDiv = document.createElement("div");
-        expDiv.className = "q-explanation";
-
-        card.append(header, textDiv, optsDiv, footer, expDiv);
-        questionsContainer.appendChild(card);
-      });
     }
 
     function startSession() {
@@ -1117,10 +998,63 @@
       correctCount = 0;
       sessionActive = true;
       submitAllBtn.disabled = false;
+      questionsContainer.innerHTML = "";
 
-      renderQuestions(sessionIndices);
+      sessionIndices.forEach((qIdx, i) => {
+        const q = currentBank.questions[qIdx];
+        const card = document.createElement("div");
+        card.className = "q-card";
+        card.dataset.qIndex = qIdx;
+        const isMulti = q.type === "multi" || (Array.isArray(q.answers) && q.answers.length > 1);
+        const typeText = isMulti ? "多選" : "單選";
+
+        const header = document.createElement("div");
+        header.className = "q-header";
+        header.innerHTML =
+          `<span>第 ${i + 1} 題（${typeText}）</span>
+           <span class="q-topic">${q.topic ? ("主題：" + q.topic) : ""}</span>`;
+
+        const textDiv = document.createElement("div");
+        textDiv.className = "q-text";
+        textDiv.textContent = q.text;
+
+        const optsDiv = document.createElement("div");
+        optsDiv.className = "options";
+        q.options.forEach((optText, idx) => {
+          const btn = document.createElement("button");
+          btn.className = "option-btn";
+          btn.textContent = String.fromCharCode(65 + idx) + ". " + optText;
+          btn.dataset.optionIndex = idx;
+          if (isMulti) {
+            btn.onclick = () => onMultiOptionClick(card, btn);
+          } else {
+            btn.onclick = () => onSingleOptionClick(card, btn);
+          }
+          optsDiv.appendChild(btn);
+        });
+
+        const footer = document.createElement("div");
+        footer.className = "q-footer";
+        const statusSpan = document.createElement("span");
+        statusSpan.className = "q-footer-status";
+        statusSpan.textContent = "尚未批改";
+
+        const showExpBtn = document.createElement("button");
+        showExpBtn.className = "btn-small btn-outline";
+        showExpBtn.textContent = isMulti ? "看正解 / 解析" : "看解析";
+        showExpBtn.onclick = () => showExplanation(card);
+
+        footer.appendChild(showExpBtn);
+        footer.appendChild(statusSpan);
+
+        const expDiv = document.createElement("div");
+        expDiv.className = "q-explanation";
+
+        card.append(header, textDiv, optsDiv, footer, expDiv);
+        questionsContainer.appendChild(card);
+      });
+
       updateSessionPlanInfo();
-
       answeredCount = 0;
       correctCount = 0;
 
@@ -1133,157 +1067,143 @@
       startTimer(limit);
     }
 
-    function startSessionWithRoomQuestions(roomQs) {
-      const normalized = normalizeRoomQuestions(roomQs);
-      if (normalized.length === 0) {
-        alert("房間考試資料有誤，已改為一般刷題模式。");
-        try { localStorage.removeItem(ROOM_RULES_KEY); } catch (e) { }
-        roomRules = null;
-        return;
+    function markQuestionWrong(qIndex) {
+      const q = currentBank.questions[qIndex];
+      if (!q.wrong) {
+        q.wrong = true;
+        saveBanks(banks);
+        refreshBankSelects();
       }
-      currentBank = {
-        id: "room-session",
-        name: roomRules && roomRules.bankId
-          ? `房間 ${roomRules.roomId || ""} 題庫 ${roomRules.bankId}`
-          : "房間競賽題目",
-        createdAt: new Date().toISOString(),
-        questions: normalized
-      };
-
-      sessionIndices = normalized.map((_, idx) => idx);
-      answeredMap = {};
-      answeredCount = 0;
-      correctCount = 0;
-      sessionActive = true;
-      submitAllBtn.disabled = false;
-
-      renderQuestions(sessionIndices);
-      const total = sessionIndices.length;
-      sessionSummaryDiv.textContent =
-        `房間測驗模式：本次共有 ${total} 題，全部一次顯示在下方。未作答亦視為答錯。`;
-
-      const timeRaw = timeLimitInput.value.trim();
-      let limit = 0;
-      if (timeRaw !== "") {
-        const m = parseInt(timeRaw, 10);
-        if (!isNaN(m) && m > 0) limit = m;
-      }
-      startTimer(limit);
     }
 
-    async function gradeAll(autoByTime = false) {
-      if (!currentBank) {
-        alert('尚未載入任何題庫');
+    function onSingleOptionClick(card, btn) {
+      if (!sessionActive) return;
+      const qIndex = parseInt(card.dataset.qIndex, 10);
+      if (answeredMap[qIndex]?.graded) return; // 批改後不能再改
+      const buttons = card.querySelectorAll(".option-btn");
+      buttons.forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+    }
+
+    function onMultiOptionClick(card, btn) {
+      if (!sessionActive) return;
+      const qIndex = parseInt(card.dataset.qIndex, 10);
+      if (answeredMap[qIndex]?.graded) return;
+      btn.classList.toggle("selected");
+    }
+
+    function showExplanation(card) {
+      const qIndex = parseInt(card.dataset.qIndex, 10);
+      const q = currentBank.questions[qIndex];
+      const expDiv = card.querySelector(".q-explanation");
+      const buttons = card.querySelectorAll(".option-btn");
+      const answers = Array.isArray(q.answers) ? q.answers : [q.answers];
+      buttons.forEach((b, idx) => {
+        if (answers.includes(idx)) b.classList.add("correct");
+      });
+      expDiv.textContent = "解析：" + (q.explanation && q.explanation.trim() !== "" ? q.explanation : "此題沒有額外解析說明。");
+      expDiv.style.display = "block";
+    }
+
+    function gradeAll(autoByTime = false) {
+      if (!sessionActive) {
+        if (!autoByTime) alert("目前沒有進行中的練習。");
         return;
       }
+      sessionActive = false;
+      stopTimer();
+      submitAllBtn.disabled = true;
 
-      let correctCount = 0;
-      let totalQuestions = currentBank.questions.length;
+      answeredCount = 0;
+      correctCount = 0;
+
       const wrongDetailList = [];
 
-      currentBank.questions.forEach((q, idx) => {
-        let container = document.querySelector(`.question-card[data-q-index="${idx}"]`);
-        if (!container) return;
+      sessionIndices.forEach(qIdx => {
+        const card = questionsContainer.querySelector(`.q-card[data-q-index="${qIdx}"]`);
+        if (!card) return;
+        const q = currentBank.questions[qIdx];
+        const buttons = card.querySelectorAll(".option-btn");
+        let chosen = [];
+        buttons.forEach((btn, idx) => {
+          if (btn.classList.contains("selected")) {
+            chosen.push(idx);
+          }
+        });
 
-        let mode = getQuestionMode(q);
-        let selected = [];
+        const stdAnswers = Array.isArray(q.answers) ? q.answers : [q.answers];
+        const sortedChosen = [...chosen].sort();
+        const sortedStd = [...stdAnswers].sort();
 
-        if (mode === 'single') {
-          let checked = container.querySelector('input[type="radio"]:checked');
-          if (checked) selected.push(checked.value);
-        } else {
-          container.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
-            selected.push(cb.value);
-          });
-        }
+        const isCorrect =
+          sortedChosen.length === sortedStd.length &&
+          sortedChosen.every((v, i) => v === sortedStd[i]);
 
-        let answers = Array.isArray(q.answer)
-          ? q.answer.map(String)
-          : String(q.answer)
-            .split(',')
-            .map(s => s.trim());
-
-        selected.sort();
-        answers.sort();
-
-        let correct = JSON.stringify(selected) === JSON.stringify(answers);
-
-        if (correct) {
+        if (isCorrect) {
           correctCount++;
-          markQuestionCorrect(idx);
+          markQuestionCorrect(qIdx);
         } else {
-          markQuestionWrong(idx);
-
-          // 蒐集錯題資訊，給後端當錯題本
+          markQuestionWrong(qIdx);
           const qId =
             q.id ||
             q.qid ||
             q.code ||
-            (typeof q.no !== 'undefined' ? String(q.no) : `idx-${idx}`);
+            (typeof q.no !== "undefined" ? String(q.no) : `idx-${qIdx}`);
 
           wrongDetailList.push({
             id: qId,
-            text: q.text || q.question || '',
-            answer: answers.join(','),
-            userAnswer: selected.join(','),
-            bankId: currentBank.id || '',
+            text: q.text || q.question || "",
+            answer: (Array.isArray(stdAnswers) ? stdAnswers : [stdAnswers]).join(","),
+            userAnswer: chosen.join(","),
+            bankId: currentBank.id || ""
           });
         }
       });
 
       updateSessionProgressSummary();
-
-      let score = Math.round((correctCount / totalQuestions) * 100);
-
+      const total = sessionIndices.length;
+      const score = total > 0 ? Math.round(correctCount * 100 / total) : 0;
       if (autoByTime) {
-        alert(
-          `時間到，自動交卷。\n本次測驗：共 ${totalQuestions} 題，答對 ${correctCount} 題，得分 ${score} 分。`
-        );
+        alert(`時間到，已自動批改並統計成績。\n本次得分：${score} 分（答對 ${correctCount}/${total} 題）`);
       } else {
-        alert(
-          `本次測驗：共 ${totalQuestions} 題，答對 ${correctCount} 題，得分 ${score} 分。`
-        );
+        alert(`已完成批改。\n本次得分：${score} 分（答對 ${correctCount}/${total} 題）`);
       }
 
-      // === 把成績送到後端，更新「我的成績 / 排行榜 / 錯題本」 ===
+      // 將成績送給後端，更新「我的成績 / 排行榜 / 錯題本」
       try {
         let playerId = null;
-        let playerName = '';
-
+        let playerName = "";
         try {
-          const raw = localStorage.getItem(PLAYER_PROFILE_KEY);
-          if (raw) {
-            const p = JSON.parse(raw);
+          const rawProfile = localStorage.getItem(PLAYER_PROFILE_KEY);
+          if (rawProfile) {
+            const p = JSON.parse(rawProfile);
             playerId = p.playerId || null;
-            playerName = p.name || '';
+            playerName = p.name || "";
           }
-        } catch (e) { }
+        } catch (e) {}
 
-        // 如果沒有登入紀錄，就用一個暫時 ID
         if (!playerId) {
-          playerId = 'guest-' + Math.random().toString(36).slice(2, 8);
+          playerId = "guest-" + Math.random().toString(36).slice(2, 8);
         }
 
-        // 判斷現在是不是房間競賽
-        let mode = 'personal';
-        let roomId = '';
-        let bankId = currentBank.id || '';
-
+        let mode = "personal";
+        let roomId = "";
+        let bankId = currentBank.id || "";
         try {
           const rawRules = localStorage.getItem(ROOM_RULES_KEY);
           if (rawRules) {
             const rules = JSON.parse(rawRules);
             if (rules && rules.roomId) {
-              mode = 'room';
+              mode = "room";
               roomId = rules.roomId;
               if (rules.bankId) bankId = rules.bankId;
             }
           }
-        } catch (e) { }
+        } catch (e) {}
 
-        await fetch('/api/exam_result', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        fetch("/api/exam_result", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             playerId,
             name: playerName,
@@ -1291,31 +1211,23 @@
             roomId,
             bankId,
             score,
-            total: totalQuestions,
+            total,
             correctCount,
-            wrongQuestions: wrongDetailList,
-          }),
+            wrongQuestions: wrongDetailList
+          })
+        }).catch(e => {
+          console.error("submit exam_result failed", e);
         });
       } catch (e) {
-        console.error('submit exam_result failed', e);
+        console.error("exam_result wrap failed", e);
       }
 
-      // === 結束本次作答 ===
-      sessionStarted = false;
-      clearInterval(countdownTimer);
-      countdownTimer = null;
+      // 若是房間模式考完，就清除房間規則，下次回到一般練習
+      try { localStorage.removeItem(ROOM_RULES_KEY); } catch (e) { }
 
-      document.getElementById('btnStartSession').disabled = false;
-      document.getElementById('btnSubmitAll').disabled = true;
-
-      // 房間規則用完就清掉，避免下次進來還誤判在房間考試
-      try {
-        localStorage.removeItem(ROOM_RULES_KEY);
-      } catch (e) { }
-
-      // === 回到 FlashBattle 首頁（保持登入資訊在 localStorage） ===
+      // 回到 FlashBattle 首頁（保留登入資訊在 localStorage）
       setTimeout(() => {
-        window.location.href = '/';
+        window.location.href = "/";
       }, 500);
     }
 
@@ -1324,6 +1236,8 @@
     topicFilterSelect.onchange = updateSessionPlanInfo;
     questionCountInput.oninput = updateSessionPlanInfo;
     startSessionBtn.onclick = startSession;
+
+    // ★★ 二次確認送出機制 ★★
     submitAllBtn.onclick = () => {
       if (submitAllBtn.disabled) return;
       const ok = confirm("確定要送出並批改嗎？\n送出後將無法再修改答案。");
@@ -1331,39 +1245,15 @@
       gradeAll(false);
     };
 
-    (function init() {
-      refreshBankSelects();
-      if (banks.length > 0) {
-        quizBankSelect.value = banks[0].id;
-        initCurrentBank();
-      } else {
-        bankInfoDiv.textContent = "目前沒有題庫，請先在『題庫管理』匯入。";
-      }
+    refreshBankSelects();
+    if (banks.length > 0) {
+      quizBankSelect.value = banks[0].id;
+      initCurrentBank();
+    } else {
+      bankInfoDiv.textContent = "目前沒有題庫，請先在『題庫管理』匯入。";
+    }
+    applyRoomRulesIfAny();
 
-      if (roomRules) {
-        const minutesText = roomRules.timeLimitMinutes
-          ? roomRules.timeLimitMinutes
-          : (roomRules.timeLimitSeconds ? Math.ceil(roomRules.timeLimitSeconds / 60) : "");
-        if (roomRules.questionCount) questionCountInput.value = roomRules.questionCount;
-        if (minutesText) timeLimitInput.value = minutesText;
-
-        const info = document.createElement("div");
-        info.className = "small";
-        info.style.color = "#d32f2f";
-        info.style.marginBottom = "6px";
-        info.textContent =
-          `目前依照房間 ${roomRules.roomId || ""} 規則作答：題數 ${roomRules.questionCount || "未指定"} 題、時間 ${minutesText || "未指定"} 分。若改成個人練習，可自行修改上方欄位。`;
-        sessionSummaryDiv.parentNode.insertBefore(info, sessionSummaryDiv);
-
-        if (Array.isArray(roomRules.questions) && roomRules.questions.length > 0) {
-          startSessionWithRoomQuestions(roomRules.questions);
-        } else {
-          console.warn("房間規則中沒有 questions 陣列，改為一般刷題模式。");
-          try { localStorage.removeItem(ROOM_RULES_KEY); } catch (e) { }
-          roomRules = null;
-        }
-      }
-    })();
   </script>
 </body>
 
