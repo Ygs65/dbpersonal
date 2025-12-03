@@ -191,27 +191,9 @@
               </label>
             </div>
           </div>
-
-          <div class="inline-row">
-            <div style="flex:0 0 auto;">
-              <button id="btnCreateRoom" class="btn">建立房間（房主）</button>
-              <button id="btnJoin" class="btn secondary">加入房間 Join Room</button>
-              <button id="btnRoomExam" class="btn danger">房間競賽多題測驗（房主設定）</button>
-            </div>
-          </div>
-
-          <!-- 新增：開發者密碼 + 刪除房間按鈕 -->
-          <div class="inline-row" style="margin-top:6px;">
-            <div>
-              <label>開發者密碼（僅 root 需要輸入）：
-                <input id="devPassword" type="password" placeholder="若以 root 刪除房間，請輸入密碼">
-              </label>
-            </div>
-            <div style="flex:0 0 180px;">
-              <button id="btnDeleteRoom" class="btn danger" style="width:100%;">刪除房間（房主 / 開發者）</button>
-            </div>
-          </div>
-
+          <button id="btnCreateRoom" class="btn">建立房間（房主）</button>
+          <button id="btnJoin" class="btn secondary">加入房間 Join Room</button>
+          <button id="btnRoomExam" class="btn danger">房間競賽多題測驗（房主設定）</button>
           <div id="roomInfo" style="font-size:.8rem;color:#555;margin-top:4px;"></div>
           <div id="examInfo" style="font-size:.8rem;color:#d32f2f;margin-top:2px;"></div>
         </div>
@@ -245,7 +227,7 @@
               <input id="bankNameInput" placeholder="題庫名稱（選填）">
             </div>
             <div style="flex:0 0 auto;">
-              <button id="btnImportBank" class="btn" disabled>上傳並建立題庫</button>
+              <button id="btnImportBank" class="btn">上傳並建立題庫</button>
             </div>
           </div>
 
@@ -317,15 +299,13 @@
     const roomBankCard = document.getElementById('roomBankCard');
     const nameInput = document.getElementById('name');
     const roomInput = document.getElementById('room');
-    const devPasswordInput = document.getElementById('devPassword');
-    const btnDeleteRoom = document.getElementById('btnDeleteRoom');
 
     let myPlayerId = null;
     let joinedRoomId = null;
     let bankMetaMap = {};
 
     function log(msg) {
-      logEl.textContent += msg + "\n";
+      logEl.textContent += msg + "\\n";
       logEl.scrollTop = logEl.scrollHeight;
     }
 
@@ -334,6 +314,7 @@
       btnReloadBanks.disabled = !enabled;
       btnLoadBankQuestions.disabled = !enabled;
       btnDeleteBank.disabled = !enabled;
+      // 匯入題庫按鈕保持可按，實際權限在 onclick 內檢查 joinedRoomId。
       if (!enabled) {
         bankSelect.innerHTML = '<option value="">（請先加入房間）</option>';
         questionInfo.textContent = '房間模式下，題庫會鎖定在房間內；請先加入房間。';
@@ -351,7 +332,6 @@
         btnCreateRoom.disabled = true;
         btnJoin.disabled = true;
         btnRoomExam.disabled = true;
-        btnDeleteRoom.disabled = true;
         setBankControlsEnabled(false);
         examInfo.textContent = '目前為「個人刷題」模式：tqcexam 上的題庫與設定皆為個人使用。';
       } else {
@@ -359,7 +339,6 @@
         btnCreateRoom.disabled = false;
         btnJoin.disabled = false;
         btnRoomExam.disabled = false;
-        btnDeleteRoom.disabled = false;
         examInfo.textContent = '目前為「房間競賽」模式：題庫匯入會鎖定在指定房間中。';
       }
       saveUserState();
@@ -599,7 +578,7 @@
         alert('請先選擇 JSON / CSV 題庫檔。');
         return;
       }
-      const bankId = bankIdInput.value.trim() || file.name.replace(/\.[^.]+$/, '');
+      const bankId = bankIdInput.value.trim() || file.name.replace(/\\.[^.]+$/, '');
       const bankName = bankNameInput.value.trim();
 
       const reader = new FileReader();
@@ -689,49 +668,6 @@
       }
     });
 
-    // 新增：刪除房間按鈕事件（房主 / root）
-    btnDeleteRoom.onclick = () => {
-      if (modeSelect.value !== 'room') {
-        alert('刪除房間只適用於「房間競賽」模式。');
-        return;
-      }
-      const room = roomInput.value.trim();
-      if (!room) {
-        alert('請先輸入要刪除的房間 ID');
-        return;
-      }
-      if (!confirm(`確定要刪除房間 ${room} 嗎？\n此動作會刪除該房間的所有設定與題庫，且無法復原。`)) {
-        return;
-      }
-      const devPassword = devPasswordInput.value || '';
-      socket.emit('delete_room', { roomId: room, devPassword });
-    };
-
-    // 接收刪除房間結果
-    socket.on('delete_room_ack', (res) => {
-      if (!res.ok) {
-        if (res.error === 'not_found') {
-          alert(`找不到房間 ${res.roomId || ''}，可能已被刪除。`);
-        } else if (res.error === 'no_permission') {
-          alert('你沒有刪除此房間的權限（需要房主或 root 開發者）。');
-        } else if (res.error === 'bad_request') {
-          alert('刪除房間失敗：參數錯誤。');
-        } else {
-          alert('刪除房間失敗：伺服器錯誤。');
-        }
-        return;
-      }
-      alert(`已刪除房間 ${res.roomId}，共刪除 ${res.deletedKeys || 0} 筆 Redis key。`);
-      // 若現在就在這個房間，重置前端狀態
-      if (joinedRoomId === res.roomId) {
-        joinedRoomId = null;
-        roomInfo.textContent = '目前未加入任何房間。';
-        setBankControlsEnabled(false);
-        questionInfo.textContent = '房間已被刪除，請重新建立或加入其他房間。';
-        saveUserState();
-      }
-    });
-
     socket.on('room_event', (m) => {
       log('room_event: ' + JSON.stringify(m));
 
@@ -754,18 +690,6 @@
         saveUserState();
         window.location.href = '/tqcexam.html';
       }
-
-      // 新增：收到房間已被刪除事件
-      if (m.type === 'room_deleted') {
-        if (joinedRoomId === m.roomId) {
-          alert(`房間 ${m.roomId} 已被刪除。`);
-          joinedRoomId = null;
-          roomInfo.textContent = '目前未加入任何房間。';
-          setBankControlsEnabled(false);
-          questionInfo.textContent = '房間已被刪除，請重新建立或加入其他房間。';
-          saveUserState();
-        }
-      }
     });
 
     socket.on('leaderboard_update', (top) => {
@@ -778,12 +702,11 @@
         const rank = i / 2 + 1;
         lines.push(`${rank}. ${top[i]} => ${top[i + 1]}`);
       }
-      leaderEl.textContent = lines.join('\n');
+      leaderEl.textContent = lines.join('\\n');
     });
 
     socket.on('connect', () => log('socket connected'));
     socket.on('disconnect', () => log('socket disconnected'));
-
     function autoLoginAndRejoin() {
       try {
         const rawProfile = localStorage.getItem(PLAYER_PROFILE_KEY);
@@ -821,7 +744,7 @@
     (function initialLoad() {
       restoreUserState();
       updateModeUI();
-      autoLoginAndRejoin();
+      autoLoginAndRejoin();   // ★ 新增這行
     })();
 
   </script>
