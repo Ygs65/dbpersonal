@@ -1,8 +1,5 @@
 // server.js
-// FlashBattle Pro Final
-// - 房間競賽 + Redis 題庫
-// - JWT 帳號系統（使用 userId + 密碼）
-// - 排行榜多模式：最後一次 / 最高分 / 平均分
+// FlashBattle + 房間競賽 + Redis 題庫 (本機端 Redis)
 // 使用：node server.js
 
 import express from 'express';
@@ -11,36 +8,13 @@ import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Redis from 'ioredis';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ===== 設定區 =====
-const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
-const JWT_EXPIRES_IN = '7d';
-
-// 排行榜 key
-const LEADERBOARD_KEYS = {
-  last: 'leaderboard:last',
-  best: 'leaderboard:best',
-  avg: 'leaderboard:avg'
-};
-
-// 使用者相關 key
-const USER_AUTH_KEY = (userId) => `user:${userId}:auth`;       // 帳號密碼
-const USER_STATS_KEY = (userId) => `user:${userId}:stats`;     // 彙總成績
-const USER_WRONG_KEY = (userId) => `user:${userId}:wrongbook`; // 錯題本
-const USER_HISTORY_KEY = (userId) => `user:${userId}:history`; // 歷史成績 list
-
-// 房間 / 題庫 key
-const ROOM_SETTINGS_KEY = (roomId) => `room:${roomId}:settings`;
-const ROOM_EXAM_KEY = (roomId) => `room:${roomId}:exam`;
-const BANK_KEY = (roomId, bankId) => `bank:${roomId}:${bankId}`;
-
 // ===== Redis 連線 =====
+// 優先使用環境變數 REDIS_URL（Render Key-Value Internal URL），沒有時改用本機 127.0.0.1:6379
+const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const redis = new Redis(redisUrl);
 
 redis.on('connect', () => {
@@ -51,6 +25,16 @@ redis.on('error', (err) => {
   console.error('[Redis] error:', err);
 });
 
+// ===== 開發者 root 設定 =====
+const ROOT_USER = 'root';
+// ⚠ 請在啟動前用環境變數設定 ROOT_PASSWORD，一旦設定就視為「不可更改」
+// 例如：ROOT_PASSWORD=yourpass npm start
+const ROOT_PASSWORD = process.env.ROOT_PASSWORD || '';
+
+if (!ROOT_PASSWORD) {
+  console.warn('[WARN] ROOT_PASSWORD 未設定，root 開發者刪除房間功能將無法使用。');
+}
+
 // ===== Express / Socket.IO =====
 const app = express();
 const server = http.createServer(app);
@@ -59,7 +43,6 @@ const io = new SocketIOServer(server, {
     origin: '*'
   }
 });
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -71,7 +54,17 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ===== 共用工具函式 =====
+// ===== 題庫/房間工具函式 =====
+const ROOM_SETTINGS_KEY = (roomId) => `room:${roomId}:settings`;
+const ROOM_EXAM_KEY = (roomId) => `room:${roomId}:exam`;
+const BANK_KEY = (roomId, bankId) => `bank:${roomId}:${bankId}`;
+
+// 排行榜、個人成績、錯題本 Redis Key
+const LEADER_KEY = 'leaderboard:global';
+const USER_STATS_KEY = (userId) => `user:${userId}:stats`;
+const USER_WRONG_KEY = (userId) => `user:${userId}:wrongbook`;
+
+// 洗牌
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -193,7 +186,6 @@ function normalizeJSONQuestions(data) {
 
   return arr.map((q) => {
     const topic = q.topic || '';
-    const tag = q.tag || '';
     const text = q.text || '';
     const options = Array.isArray(q.options) ? q.options : [];
     let answers = [];
@@ -205,231 +197,10 @@ function normalizeJSONQuestions(data) {
     if (answers.length === 0 && options.length >= 1) answers = [0];
     const type = q.type || (answers.length > 1 ? 'multi' : 'single');
     const explanation = q.explanation || '';
-    return { topic, tag, text, options, answers, type, explanation };
+    return { topic, text, options, answers, type, explanation };
   }).filter(q => q.text && q.options.length >= 2);
 }
 
-// ===== JWT / Auth 工具 =====
-function signToken(userId) {
-  return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-}
-
-function authMiddleware(req, res, next) {
-  const authHeader = req.headers.authorization || '';
-  const [scheme, token] = authHeader.split(' ');
-  if (scheme !== 'Bearer' || !token) {
-    return res.status(401).json({ ok: false, error: 'no_token' });
-  }
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    req.userId = payload.sub;
-    next();
-  } catch (e) {
-    console.error('[authMiddleware] verify failed', e);
-    return res.status(401).json({ ok: false, error: 'invalid_token' });
-  }
-}
-
-// ===== Auth APIs =====
-
-// 註冊：userId + password + name
-app.post('/auth/register', async (req, res) => {
-  try {
-    const { userId, password, name } = req.body || {};
-    if (!userId || !password) {
-      return res.status(400).json({ ok: false, error: 'missing_fields' });
-    }
-    const trimmedId = String(userId).trim();
-    if (!/^[a-zA-Z0-9_\-]{3,20}$/.test(trimmedId)) {
-      return res.status(400).json({ ok: false, error: 'bad_userId_format' });
-    }
-    const key = USER_AUTH_KEY(trimmedId);
-    const existed = await redis.get(key);
-    if (existed) {
-      return res.status(409).json({ ok: false, error: 'user_exists' });
-    }
-    const hash = await bcrypt.hash(String(password), 10);
-    const profile = {
-      userId: trimmedId,
-      name: name?.trim() || trimmedId,
-      passwordHash: hash,
-      createdAt: new Date().toISOString()
-    };
-    await redis.set(key, JSON.stringify(profile));
-    const token = signToken(trimmedId);
-    return res.json({
-      ok: true,
-      token,
-      user: { userId: trimmedId, name: profile.name }
-    });
-  } catch (e) {
-    console.error('/auth/register error', e);
-    return res.status(500).json({ ok: false, error: 'server_error' });
-  }
-});
-
-// 登入：userId + password
-app.post('/auth/login', async (req, res) => {
-  try {
-    const { userId, password } = req.body || {};
-    if (!userId || !password) {
-      return res.status(400).json({ ok: false, error: 'missing_fields' });
-    }
-    const trimmedId = String(userId).trim();
-    const key = USER_AUTH_KEY(trimmedId);
-    const json = await redis.get(key);
-    if (!json) {
-      return res.status(401).json({ ok: false, error: 'user_not_found' });
-    }
-    let profile;
-    try {
-      profile = JSON.parse(json);
-    } catch {
-      return res.status(500).json({ ok: false, error: 'profile_broken' });
-    }
-    const okPass = await bcrypt.compare(String(password), profile.passwordHash || '');
-    if (!okPass) {
-      return res.status(401).json({ ok: false, error: 'wrong_password' });
-    }
-    const token = signToken(trimmedId);
-    return res.json({
-      ok: true,
-      token,
-      user: { userId: trimmedId, name: profile.name || trimmedId }
-    });
-  } catch (e) {
-    console.error('/auth/login error', e);
-    return res.status(500).json({ ok: false, error: 'server_error' });
-  }
-});
-
-// 取得目前使用者資訊
-app.get('/auth/me', authMiddleware, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const [authJson, statsJson] = await redis.mget(
-      USER_AUTH_KEY(userId),
-      USER_STATS_KEY(userId)
-    );
-    let user = null;
-    if (authJson) {
-      try {
-        const p = JSON.parse(authJson);
-        user = { userId: p.userId, name: p.name };
-      } catch {}
-    }
-    let stats = null;
-    if (statsJson) {
-      try {
-        stats = JSON.parse(statsJson);
-      } catch {}
-    }
-    return res.json({ ok: true, user, stats });
-  } catch (e) {
-    console.error('/auth/me error', e);
-    return res.status(500).json({ ok: false, error: 'server_error' });
-  }
-});
-
-// ===== 成績 / 排行榜 / 錯題本 APIs =====
-
-// 取得排行榜（多模式 + 分頁）
-app.get('/api/leaderboard', async (req, res) => {
-  try {
-    const type = (req.query.type || 'last').toString();
-    const key = LEADERBOARD_KEYS[type] || LEADERBOARD_KEYS.last;
-    const page = Math.max(parseInt(req.query.page || '1', 10), 1);
-    const pageSize = Math.min(Math.max(parseInt(req.query.pageSize || '10', 10), 1), 50);
-    const start = (page - 1) * pageSize;
-    const end = start + pageSize - 1;
-
-    const [rawEntries, totalCount] = await Promise.all([
-      redis.zrevrange(key, start, end, 'WITHSCORES'),
-      redis.zcard(key)
-    ]);
-
-    const entries = [];
-    for (let i = 0; i < rawEntries.length; i += 2) {
-      const userId = rawEntries[i];
-      const score = Number(rawEntries[i + 1]) || 0;
-      entries.push({ userId, score });
-    }
-
-    // 盡量補上名稱（從 stats 取）
-    if (entries.length > 0) {
-      const statKeys = entries.map(e => USER_STATS_KEY(e.userId));
-      const statsJsonArr = await redis.mget(statKeys);
-      statsJsonArr.forEach((s, idx) => {
-        if (!s) return;
-        try {
-          const obj = JSON.parse(s);
-          entries[idx].name = obj.name || entries[idx].userId;
-        } catch {}
-      });
-    }
-
-    const hasNext = end < totalCount - 1;
-    return res.json({
-      ok: true,
-      type,
-      page,
-      pageSize,
-      total: totalCount,
-      hasNext,
-      entries
-    });
-  } catch (e) {
-    console.error('/api/leaderboard error', e);
-    return res.status(500).json({ ok: false, error: 'server_error' });
-  }
-});
-
-// 取得「我的歷史成績」（需登入）
-app.get('/api/history/me', authMiddleware, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const list = await redis.lrange(USER_HISTORY_KEY(userId), 0, 49);
-    const history = [];
-    for (const item of list) {
-      try {
-        history.push(JSON.parse(item));
-      } catch {}
-    }
-    return res.json({ ok: true, history });
-  } catch (e) {
-    console.error('/api/history/me error', e);
-    return res.status(500).json({ ok: false, error: 'server_error' });
-  }
-});
-
-// 取得「我的錯題本」（可選 topic / tag 篩選）
-app.get('/api/wrongbook/me', authMiddleware, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const topic = (req.query.topic || '').toString().trim();
-    const tag = (req.query.tag || '').toString().trim();
-    const json = await redis.get(USER_WRONG_KEY(userId));
-    if (!json) return res.json({ ok: true, wrongQuestions: [] });
-    let arr;
-    try {
-      arr = JSON.parse(json);
-    } catch {
-      arr = [];
-    }
-    if (!Array.isArray(arr)) arr = [];
-    let result = arr;
-    if (topic) {
-      result = result.filter(q => (q.topic || '') === topic);
-    }
-    if (tag) {
-      result = result.filter(q => (q.tag || '') === tag);
-    }
-    return res.json({ ok: true, wrongQuestions: result });
-  } catch (e) {
-    console.error('/api/wrongbook/me error', e);
-    return res.status(500).json({ ok: false, error: 'server_error' });
-  }
-});
 
 // ===== 接收考試結果（單人 / 房間） =====
 app.post('/api/exam_result', async (req, res) => {
@@ -450,85 +221,38 @@ app.post('/api/exam_result', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'missing_player' });
     }
 
-    const lastScore = Number(score) || 0;
-    const totalQuestions = Number(total) || 0;
-    const lastCorrect = Number(correctCount) || 0;
-
-    // 先載入舊 stats，用來累積 best / avg
-    let prevStats = {};
-    const existedJson = await redis.get(USER_STATS_KEY(playerId));
-    if (existedJson) {
-      try {
-        prevStats = JSON.parse(existedJson) || {};
-      } catch {
-        prevStats = {};
-      }
-    }
-
-    const prevAttempts = Number(prevStats.attemptCount || 0);
-    const prevBest = Number(prevStats.bestScore || 0);
-    const prevSum = Number(prevStats.totalScoreSum || 0);
-
-    const attemptCount = prevAttempts + 1;
-    const bestScore = Math.max(prevBest, lastScore);
-    const totalScoreSum = prevSum + lastScore;
-    const avgScore = attemptCount > 0 ? Math.round(totalScoreSum / attemptCount) : lastScore;
-
     const stats = {
       playerId,
       name: name || playerId,
       mode: mode || 'personal',
       lastRoomId: roomId || '',
       bankId: bankId || '',
-      lastScore,
-      totalQuestions,
-      lastCorrect,
-      attemptCount,
-      bestScore,
-      totalScoreSum,
-      avgScore,
+      lastScore: Number(score) || 0,
+      totalQuestions: Number(total) || 0,
+      lastCorrect: Number(correctCount) || 0,
       updatedAt: new Date().toISOString()
     };
 
     // 1) 存「我的成績」
     await redis.set(USER_STATS_KEY(playerId), JSON.stringify(stats));
 
-    // 2) 累積「我的錯題本」（直接 append，保留 topic / tag / explanation 等欄位）
+    // 2) 累積「我的錯題本」
     if (Array.isArray(wrongQuestions) && wrongQuestions.length > 0) {
       let merged = [];
-      const existedWrong = await redis.get(USER_WRONG_KEY(playerId));
-      if (existedWrong) {
-        try { merged = JSON.parse(existedWrong) || []; } catch (e) { merged = []; }
+      const existed = await redis.get(USER_WRONG_KEY(playerId));
+      if (existed) {
+        try { merged = JSON.parse(existed) || []; } catch (e) { merged = []; }
       }
       merged = merged.concat(wrongQuestions);
       await redis.set(USER_WRONG_KEY(playerId), JSON.stringify(merged));
     }
 
-    // 3) 歷史成績：LPUSH + LTRIM 保留最近 50 筆
-    const historyEntry = {
-      playerId,
-      name: name || playerId,
-      mode: mode || 'personal',
-      roomId: roomId || '',
-      bankId: bankId || '',
-      score: lastScore,
-      totalQuestions,
-      correctCount: lastCorrect,
-      createdAt: new Date().toISOString()
-    };
-    await redis.lpush(USER_HISTORY_KEY(playerId), JSON.stringify(historyEntry));
-    await redis.ltrim(USER_HISTORY_KEY(playerId), 0, 49);
+    // 3) 更新排行榜（Sorted Set）
+    await redis.zadd(LEADER_KEY, score || 0, String(playerId));
 
-    // 4) 更新排行榜（Sorted Set，多模式）
-    await Promise.all([
-      redis.zadd(LEADERBOARD_KEYS.last, lastScore, String(playerId)),
-      redis.zadd(LEADERBOARD_KEYS.best, bestScore, String(playerId)),
-      redis.zadd(LEADERBOARD_KEYS.avg, avgScore, String(playerId))
-    ]);
-
-    // 5) 廣播最新「最後一次成績排行榜」給首頁（只更新 last 模式第一頁）
+    // 4) 廣播最新排行榜
     try {
-      const top = await redis.zrevrange(LEADERBOARD_KEYS.last, 0, 9, 'WITHSCORES');
+      const top = await redis.zrevrange(LEADER_KEY, 0, 9, 'WITHSCORES');
       io.emit('leaderboard_update', top || []);
     } catch (e) {
       console.error('[leaderboard] refresh failed', e);
@@ -541,11 +265,12 @@ app.post('/api/exam_result', async (req, res) => {
   }
 });
 
+
 // ===== Socket.IO 事件 =====
 io.on('connection', (socket) => {
   console.log('client connected', socket.id);
 
-  // ---- 登入：使用者自己填的名稱 & userId（可來自 JWT profile） ----
+  // ---- 登入：使用者自己填的名稱就是 userId ----
   socket.on('login', async ({ name, userId }) => {
     const id = (userId && userId.trim()) || (name && name.trim()) || socket.id;
     socket.data.userId = id;
@@ -576,9 +301,9 @@ io.on('connection', (socket) => {
       wrongQuestions
     });
 
-    // 初次登入時，也送一份「最後一次成績」排行榜
+    // 初次登入時，也送一份排行榜
     try {
-      const top = await redis.zrevrange(LEADERBOARD_KEYS.last, 0, 9, 'WITHSCORES');
+      const top = await redis.zrevrange(LEADER_KEY, 0, 9, 'WITHSCORES');
       socket.emit('leaderboard_update', top || []);
     } catch (e) {
       console.error('[login] load leaderboard failed:', e);
@@ -764,13 +489,89 @@ io.on('connection', (socket) => {
     socket.emit('room_exam_ack', { ok: true, roomId, bankId });
   });
 
+  // ---- 新增：刪除房間（只有房主或 root 開發者可以） ----
+  socket.on('delete_room', async ({ roomId, devPassword }) => {
+    try {
+      if (!roomId) {
+        socket.emit('delete_room_ack', { ok: false, error: 'bad_request' });
+        return;
+      }
+
+      const settingsKey = ROOM_SETTINGS_KEY(roomId);
+      const exists = await redis.exists(settingsKey);
+      if (!exists) {
+        socket.emit('delete_room_ack', { ok: false, error: 'not_found', roomId });
+        return;
+      }
+
+      let settings = {};
+      const settingsJson = await redis.get(settingsKey);
+      if (settingsJson) {
+        try { settings = JSON.parse(settingsJson); } catch {}
+      }
+
+      const currentUserId = socket.data?.userId || socket.id;
+      const isHost = settings.hostId && settings.hostId === currentUserId;
+      const isDev =
+        currentUserId === ROOT_USER &&
+        ROOT_PASSWORD &&
+        typeof devPassword === 'string' &&
+        devPassword === ROOT_PASSWORD;
+
+      if (!isHost && !isDev) {
+        socket.emit('delete_room_ack', { ok: false, error: 'no_permission', roomId });
+        return;
+      }
+
+      const patterns = [`room:${roomId}:*`, `bank:${roomId}:*`];
+      let allKeys = [];
+      for (const p of patterns) {
+        const ks = await redis.keys(p);
+        allKeys = allKeys.concat(ks);
+      }
+
+      let delCount = 0;
+      if (allKeys.length > 0) {
+        delCount = await redis.del(allKeys);
+      }
+
+      // 對該房間所有人廣播房間已被刪除
+      io.to(roomId).emit('room_event', {
+        type: 'room_deleted',
+        roomId
+      });
+
+      // 讓 socket 離開房間（只對目前這個連線）
+      socket.leave(roomId);
+      if (socket.data.currentRoom === roomId) {
+        socket.data.currentRoom = null;
+      }
+
+      socket.emit('delete_room_ack', {
+        ok: true,
+        roomId,
+        deletedKeys: delCount
+      });
+    } catch (e) {
+      console.error('[delete_room] error:', e);
+      socket.emit('delete_room_ack', { ok: false, error: 'server_error' });
+    }
+  });
+
+  // ---- 排行榜（簡單 stub）----
+  const LEADER_KEY = 'leaderboard:global';
+  (async () => {
+    const top = await redis.zrevrange(LEADER_KEY, 0, 9, 'WITHSCORES');
+    socket.emit('leaderboard_update', top || []);
+  })();
+
   socket.on('disconnect', () => {
     console.log('client disconnected', socket.id);
   });
 });
 
 // ===== 啟動伺服器 =====
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 server.listen(PORT, () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
