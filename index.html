@@ -3,7 +3,10 @@
 
 <head>
   <meta charset="utf-8">
-  <title>FlashBattle - Redis 線上測驗系統</title>
+  <title>FlashBattle Pro - Redis 線上測驗系統</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#1976d2" />
+  <link rel="manifest" href="/manifest.json">
   <style>
     * {
       box-sizing: border-box;
@@ -12,7 +15,7 @@
 
     body {
       margin: 0;
-      background: #f5f5f5;
+      background: radial-gradient(circle at top, #e3f2fd 0, #f5f5f5 45%, #fafafa 100%);
       min-height: 100vh;
       display: flex;
       justify-content: center;
@@ -20,25 +23,28 @@
     }
 
     .app {
-      background: #fff;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
       width: 100%;
-      max-width: 980px;
+      max-width: 1080px;
       margin: 16px;
       padding: 20px 20px 24px;
-      border-radius: 16px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, .08);
+      border-radius: 18px;
+      box-shadow: 0 12px 40px rgba(25, 118, 210, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.8);
     }
 
     h1 {
-      font-size: 1.4rem;
+      font-size: 1.5rem;
       text-align: center;
-      margin: 0 0 12px;
+      margin: 0 0 8px;
+      letter-spacing: 0.06em;
     }
 
     .subtitle {
       font-size: .85rem;
       text-align: center;
-      color: #666;
+      color: #555;
       margin-bottom: 16px;
     }
 
@@ -55,32 +61,55 @@
     }
 
     .card {
-      border-radius: 12px;
+      border-radius: 14px;
       border: 1px solid #e0e0e0;
       padding: 12px 14px;
       margin-bottom: 10px;
-      background: #fafafa;
+      background: linear-gradient(135deg, #fafafa, #ffffff);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, .04);
     }
 
     .card-title {
       font-size: .95rem;
       font-weight: 600;
       margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chip {
+      font-size: .7rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #e3f2fd;
+      color: #1565c0;
     }
 
     label {
-      font-size: .85rem;
+      font-size: .8rem;
       display: block;
       margin: 4px 0;
+      color: #555;
     }
 
     input,
     select {
       width: 100%;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid #cfd8dc;
+      padding: 6px 10px;
       font-size: .9rem;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s, background .15s;
+      background: #fafbff;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: #1976d2;
+      box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.16);
+      background: #ffffff;
     }
 
     .inline-row {
@@ -92,6 +121,7 @@
 
     .inline-row>div {
       flex: 1;
+      min-width: 0;
     }
 
     .btn {
@@ -100,28 +130,49 @@
       border: none;
       cursor: pointer;
       font-size: .85rem;
-      background: #1976d2;
+      background: linear-gradient(135deg, #1976d2, #1565c0);
       color: #fff;
       margin-right: 6px;
       margin-top: 4px;
+      box-shadow: 0 3px 8px rgba(21, 101, 192, 0.25);
+      transition: transform .08s ease-out, box-shadow .12s;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 5px 14px rgba(21, 101, 192, 0.3);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 6px rgba(21, 101, 192, 0.25);
     }
 
     .btn.secondary {
-      background: #eee;
-      color: #333;
+      background: #eceff1;
+      color: #37474f;
+      box-shadow: none;
+    }
+
+    .btn.secondary:hover {
+      box-shadow: 0 2px 4px rgba(0, 0, 0, .08);
     }
 
     .btn.danger {
-      background: #d32f2f;
+      background: linear-gradient(135deg, #e53935, #c62828);
+      box-shadow: 0 3px 8px rgba(229, 57, 53, 0.28);
     }
 
     .btn:disabled {
-      opacity: .5;
+      opacity: .55;
       cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
     }
 
     #log {
-      border-radius: 8px;
+      border-radius: 10px;
       border: 1px solid #e0e0e0;
       padding: 8px;
       max-height: 180px;
@@ -134,48 +185,113 @@
     pre {
       background: #f7f7f7;
       padding: 8px;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 12px;
       margin: 4px 0;
+      max-height: 180px;
+      overflow: auto;
     }
 
     ul {
       padding-left: 18px;
       font-size: .85rem;
+      margin: 4px 0;
     }
 
     ul li {
-      margin-bottom: 2px;
+      margin-bottom: 3px;
     }
 
     .small-text {
-      font-size: .8rem;
-      color: #777;
+      font-size: .75rem;
+      color: #78909c;
+    }
+
+    .tag-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #eceff1;
+      font-size: .7rem;
+      margin-left: 4px;
+    }
+
+    .leader-controls {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+    }
+
+    .leader-controls select {
+      width: auto;
+      min-width: 80px;
+      padding-right: 22px;
+    }
+
+    .leader-controls .btn {
+      margin-top: 0;
+    }
+
+    .leader-page {
+      font-size: .75rem;
+      color: #607d8b;
     }
   </style>
 </head>
 
 <body>
   <div class="app">
-    <h1>FlashBattle - Redis 線上測驗系統</h1>
+    <h1>FlashBattle Pro</h1>
     <div class="subtitle">
-      模式可切換：<b>個人刷題</b>（直接用 tqcexam）或 <b>房間競賽</b>（房間專屬題庫 + 自動跳 tqcexam 作答）。<br>
-      ✅ 會記住你剛剛填寫的名稱 / 房間 / 題庫選擇，下次回來會自動恢復。
+      Redis 題庫 + 房間競賽 + JWT 帳號登入。<br>
+      模式可切換：<b>個人刷題</b>（直接用 tqcexam）或 <b>房間競賽</b>（房間專屬題庫 + 同步出題）。<br>
+      ✅ 會記住你剛剛填寫的帳號 / 名稱 / 房間 / 題庫選擇，下次回來會自動恢復。
     </div>
 
     <div class="grid">
       <div>
+        <!-- 玩家登入 -->
         <div class="card">
-          <div class="card-title">玩家登入</div>
-          <label>玩家名稱：
-            <input id="name" value="Player">
-          </label>
-          <button id="btnLogin" class="btn">登入 Login</button>
-          <div id="playerInfo" style="font-size:.8rem;color:#555;margin-top:4px;"></div>
+          <div class="card-title">
+            玩家登入 / 註冊
+            <span class="chip">帳號：userId + 密碼</span>
+          </div>
+          <div class="inline-row">
+            <div>
+              <label>使用者 ID（登入帳號）：
+                <input id="userId" placeholder="例如：flashPlayer01" />
+              </label>
+            </div>
+            <div>
+              <label>密碼：
+                <input id="password" type="password" placeholder="至少 6 碼" />
+              </label>
+            </div>
+          </div>
+          <div class="inline-row">
+            <div>
+              <label>玩家暱稱（顯示用，可自訂）：
+                <input id="name" value="Player" />
+              </label>
+            </div>
+          </div>
+          <button id="btnRegister" class="btn">註冊新帳號</button>
+          <button id="btnAuthLogin" class="btn secondary">使用帳號登入</button>
+          <button id="btnLogin" class="btn secondary">快速訪客登入（不綁帳號）</button>
+          <div id="playerInfo" style="font-size:.8rem;color:#455a64;margin-top:6px;"></div>
+          <div class="small-text" id="authStatusTip">
+            建議先註冊帳號，成績與錯題本才能跨裝置保存；訪客模式只記錄在本機。
+          </div>
         </div>
 
+        <!-- 模式 / 房間設定 -->
         <div class="card">
-          <div class="card-title">模式選擇 & 房間設定</div>
+          <div class="card-title">
+            模式選擇 & 房間設定
+            <span class="chip">Room Battle</span>
+          </div>
           <div class="inline-row">
             <div>
               <label>模式：
@@ -194,12 +310,15 @@
           <button id="btnCreateRoom" class="btn">建立房間（房主）</button>
           <button id="btnJoin" class="btn secondary">加入房間 Join Room</button>
           <button id="btnRoomExam" class="btn danger">房間競賽多題測驗（房主設定）</button>
-          <div id="roomInfo" style="font-size:.8rem;color:#555;margin-top:4px;"></div>
+          <div id="roomInfo" style="font-size:.8rem;color:#455a64;margin-top:4px;"></div>
           <div id="examInfo" style="font-size:.8rem;color:#d32f2f;margin-top:2px;"></div>
         </div>
 
+        <!-- 題庫管理（房間） -->
         <div class="card" id="roomBankCard">
-          <div class="card-title">題庫管理（房間專用，鎖定房間ID）</div>
+          <div class="card-title">
+            題庫管理（房間專用，鎖定房間ID）
+          </div>
           <div class="inline-row">
             <div>
               <label>Redis 題庫（此房間可用）：
@@ -231,20 +350,27 @@
             </div>
           </div>
 
-          <div id="questionInfo" style="font-size:.8rem;color:#555;margin-top:4px;">
+          <div id="questionInfo" style="font-size:.8rem;color:#455a64;margin-top:4px;">
             房間模式下，題庫會鎖定在房間內；請先加入房間。
           </div>
         </div>
 
+        <!-- 多題刷題入口 -->
         <div class="card">
-          <div class="card-title">多題刷題入口</div>
+          <div class="card-title">
+            多題刷題入口
+          </div>
           <p class="small-text">
             ● <b>個人刷題模式：</b> 直接前往 <code>tqcexam.html</code>，自己選題庫、多題練習。<br>
-            ● <b>房間競賽模式：</b> 房主設定題庫與規則後，系統會把規則與題目同步到所有玩家，並自動導到 <code>tqcexam</code> 開始作答。
+            ● <b>房間競賽模式：</b> 房主設定題庫與規則後，系統會把規則與題目同步到所有玩家，並自動導到
+            <code>tqcexam</code> 開始作答。
           </p>
-          <button id="btnGoTqcExam" class="btn">前往多題練習頁面 / 回到考場 (tqcexam)</button>
+          <button id="btnGoTqcExam" class="btn" style="width:100%;">
+            前往多題練習頁面 / 回到考場 (tqcexam)
+          </button>
         </div>
 
+        <!-- Log -->
         <div class="card">
           <div class="card-title">事件 Log（偵錯 / 觀察用）</div>
           <div id="log"></div>
@@ -252,21 +378,50 @@
       </div>
 
       <div>
+        <!-- 排行榜 -->
         <div class="card">
-          <div class="card-title">全伺服器排行榜（Redis Sorted Set）</div>
+          <div class="card-title">
+            全伺服器排行榜（Redis Sorted Set）
+          </div>
+          <div class="leader-controls">
+            <select id="leaderTypeSelect">
+              <option value="last">最後一次成績</option>
+              <option value="best">最高分</option>
+              <option value="avg">平均分</option>
+            </select>
+            <button id="btnLeaderPrev" class="btn secondary">&lt;</button>
+            <button id="btnLeaderNext" class="btn secondary">&gt;</button>
+            <span id="leaderPageInfo" class="leader-page">第 1 頁</span>
+          </div>
           <pre id="leader">尚無資料</pre>
+          <div class="small-text">
+            提示：排行榜多模式共用同一組帳號，只是計分方式不同（最後一次 / 最高分 / 平均分）。
+          </div>
         </div>
 
+        <!-- 我的成績 -->
         <div class="card">
-          <div class="card-title">我的成績（Redis Hash）</div>
+          <div class="card-title">我的成績（Redis Stats）</div>
           <pre id="myStats">尚未登入</pre>
         </div>
 
+        <!-- 歷史成績 -->
         <div class="card">
-          <div class="card-title">我的錯題本（記憶效果）</div>
+          <div class="card-title">歷史成績</div>
+          <pre id="historyList">請先登入帳號，會顯示最近 50 筆成績。</pre>
+        </div>
+
+        <!-- 錯題本 -->
+        <div class="card">
+          <div class="card-title">
+            我的錯題本（記憶效果）
+          </div>
           <ul id="wrongList">
             <li style="color:#888;">尚無錯題紀錄。</li>
           </ul>
+          <div class="small-text">
+            題目會依照你作答結果累積在這裡，預設顯示最近幾次考試的錯題（含主題 / 正解 / 你的答案）。
+          </div>
         </div>
       </div>
     </div>
@@ -278,11 +433,13 @@
     const ROOM_RULES_KEY = 'fb_room_exam_rules';
     const USER_STATE_KEY = 'fb_user_state_v1';
     const PLAYER_PROFILE_KEY = 'fb_player_profile_v1';
+    const AUTH_TOKEN_KEY = 'fb_auth_token_v1';
 
     const logEl = document.getElementById('log');
     const leaderEl = document.getElementById('leader');
     const myStatsEl = document.getElementById('myStats');
     const wrongListEl = document.getElementById('wrongList');
+    const historyListEl = document.getElementById('historyList');
     const playerInfo = document.getElementById('playerInfo');
     const roomInfo = document.getElementById('roomInfo');
     const examInfo = document.getElementById('examInfo');
@@ -299,14 +456,43 @@
     const roomBankCard = document.getElementById('roomBankCard');
     const nameInput = document.getElementById('name');
     const roomInput = document.getElementById('room');
+    const userIdInput = document.getElementById('userId');
+    const passwordInput = document.getElementById('password');
+    const leaderTypeSelect = document.getElementById('leaderTypeSelect');
+    const btnLeaderPrev = document.getElementById('btnLeaderPrev');
+    const btnLeaderNext = document.getElementById('btnLeaderNext');
+    const leaderPageInfo = document.getElementById('leaderPageInfo');
+
+    const authStatusTip = document.getElementById('authStatusTip');
 
     let myPlayerId = null;
     let joinedRoomId = null;
     let bankMetaMap = {};
+    let leaderType = 'last';
+    let leaderPage = 1;
+    const LEADER_PAGE_SIZE = 10;
 
     function log(msg) {
       logEl.textContent += msg + "\\n";
       logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function getAuthToken() {
+      try {
+        return localStorage.getItem(AUTH_TOKEN_KEY) || '';
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function saveAuthProfile(userId, name, token) {
+      try {
+        if (token) localStorage.setItem(AUTH_TOKEN_KEY, token);
+        localStorage.setItem(PLAYER_PROFILE_KEY, JSON.stringify({ playerId: userId, name }));
+      } catch (e) { }
+      playerInfo.textContent = `已登入帳號：${userId}（暱稱：${name}）`;
+      authStatusTip.textContent = '已成功登入，成績 / 排行榜 / 錯題本都會綁定在此帳號上。';
+      authStatusTip.style.color = '#2e7d32';
     }
 
     function setBankControlsEnabled(enabled) {
@@ -348,6 +534,7 @@
     function saveUserState() {
       try {
         const state = {
+          userId: userIdInput.value || '',
           name: nameInput.value || '',
           mode: modeSelect.value || 'personal',
           roomId: roomInput.value || '',
@@ -363,6 +550,7 @@
         const raw = localStorage.getItem(USER_STATE_KEY);
         if (!raw) return;
         const st = JSON.parse(raw);
+        if (st.userId) userIdInput.value = st.userId;
         if (st.name) nameInput.value = st.name;
         if (st.mode) modeSelect.value = st.mode;
         if (st.roomId) roomInput.value = st.roomId;
@@ -372,6 +560,7 @@
 
     nameInput.addEventListener('input', saveUserState);
     roomInput.addEventListener('input', saveUserState);
+    userIdInput.addEventListener('input', saveUserState);
 
     document.getElementById('btnGoTqcExam').onclick = () => {
       saveUserState();
@@ -381,17 +570,83 @@
       window.location.href = '/tqcexam.html';
     };
 
+    // 訪客快速登入（不綁帳號）
     document.getElementById('btnLogin').onclick = () => {
       const name = nameInput.value || 'Player';
       socket.emit('login', { name });
     };
 
+    // JWT 註冊
+    document.getElementById('btnRegister').onclick = async () => {
+      const userId = userIdInput.value.trim();
+      const password = passwordInput.value;
+      const name = nameInput.value.trim() || userId;
+      if (!userId || !password) {
+        alert('請輸入使用者 ID 與密碼。');
+        return;
+      }
+      try {
+        const res = await fetch('/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, password, name })
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          if (data.error === 'user_exists') alert('此使用者 ID 已被註冊，請改用其他 ID。');
+          else if (data.error === 'bad_userId_format') alert('使用者 ID 僅能包含英文、數字、底線與減號，長度 3~20。');
+          else alert('註冊失敗：' + (data.error || '未知錯誤'));
+          return;
+        }
+        saveAuthProfile(data.user.userId, data.user.name, data.token);
+        socket.emit('login', { name: data.user.name, userId: data.user.userId });
+        await refreshStatsAndHistory();
+      } catch (e) {
+        console.error(e);
+        alert('註冊時發生錯誤，請稍後再試。');
+      }
+    };
+
+    // JWT 登入
+    document.getElementById('btnAuthLogin').onclick = async () => {
+      const userId = userIdInput.value.trim();
+      const password = passwordInput.value;
+      if (!userId || !password) {
+        alert('請輸入使用者 ID 與密碼。');
+        return;
+      }
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, password })
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          if (data.error === 'user_not_found' || data.error === 'wrong_password') {
+            alert('帳號或密碼錯誤。');
+          } else {
+            alert('登入失敗：' + (data.error || '未知錯誤'));
+          }
+          return;
+        }
+        saveAuthProfile(data.user.userId, data.user.name, data.token);
+        socket.emit('login', { name: data.user.name, userId: data.user.userId });
+        await refreshStatsAndHistory();
+      } catch (e) {
+        console.error(e);
+        alert('登入時發生錯誤，請稍後再試。');
+      }
+    };
+
+    // Socket 登入回應（訪客 / 帳號皆會走這裡）
     socket.on('login_ack', (d) => {
       myPlayerId = d.playerId;
-      playerInfo.textContent = `登入成功：ID = ${d.playerId}，Name = ${d.name}`;
+      if (!playerInfo.textContent) {
+        playerInfo.textContent = `登入成功：ID = ${d.playerId}，Name = ${d.name}`;
+      }
       log('login_ack: ' + JSON.stringify(d));
 
-      // 記住玩家資訊，tqcexam 交卷時會用到
       try {
         localStorage.setItem(
           PLAYER_PROFILE_KEY,
@@ -405,21 +660,121 @@
         myStatsEl.textContent = '目前無成績紀錄。';
       }
 
+      renderWrongList(d.wrongQuestions || []);
+    });
+
+    function renderWrongList(wrongQuestions) {
       wrongListEl.innerHTML = '';
-      if (d.wrongQuestions && d.wrongQuestions.length > 0) {
-        d.wrongQuestions.forEach((q) => {
-          const li = document.createElement('li');
-          li.textContent = `題號 ${q.id}: ${q.text}（正解：${q.answer}）`;
-          wrongListEl.appendChild(li);
-        });
-      } else {
+      if (!wrongQuestions || wrongQuestions.length === 0) {
         const li = document.createElement('li');
         li.style.color = '#888';
         li.textContent = '尚無錯題紀錄。';
         wrongListEl.appendChild(li);
+        return;
       }
-    });
+      // 只顯示前 30 筆以免太長
+      wrongQuestions.slice(0, 30).forEach((q) => {
+        const li = document.createElement('li');
+        const topicLabel = q.topic ? `[${q.topic}] ` : '';
+        const answers = Array.isArray(q.answers)
+          ? q.answers
+          : (typeof q.answer === 'string'
+            ? q.answer.split(',').map(x => parseInt(x, 10)).filter(x => !isNaN(x))
+            : []);
+        const userAnswers = Array.isArray(q.userAnswer)
+          ? q.userAnswer
+          : (typeof q.userAnswer === 'string' && q.userAnswer !== ''
+            ? q.userAnswer.split(',').map(x => parseInt(x, 10)).filter(x => !isNaN(x))
+            : []);
 
+        const idxToLetter = (idx) => String.fromCharCode(65 + idx);
+        const correctLabel = answers.length
+          ? answers.map(idxToLetter).join('/')
+          : (q.answer || '');
+        const userLabel = userAnswers.length
+          ? userAnswers.map(idxToLetter).join('/')
+          : '未作答';
+
+        li.textContent = `${topicLabel}${q.text || ''} ｜ 正解：${correctLabel} ｜ 你的答案：${userLabel}`;
+        wrongListEl.appendChild(li);
+      });
+    }
+
+    async function refreshHistory() {
+      const token = getAuthToken();
+      if (!token) {
+        historyListEl.textContent = '請先登入帳號，會顯示最近 50 筆成績。';
+        return;
+      }
+      try {
+        const res = await fetch('/api/history/me', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          historyListEl.textContent = '讀取歷史成績失敗。';
+          return;
+        }
+        const history = data.history || [];
+        if (history.length === 0) {
+          historyListEl.textContent = '尚無歷史成績紀錄。';
+          return;
+        }
+        const lines = history.map((h, idx) => {
+          const dt = new Date(h.createdAt || Date.now());
+          const dStr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+          return `${idx + 1}. ${dStr} ｜ 分數 ${h.score} 分（答對 ${h.correctCount}/${h.totalQuestions} 題｜模式：${h.mode || 'personal'}｜銀行：${h.bankId || '-'}）`;
+        });
+        historyListEl.textContent = lines.join('\\n');
+      } catch (e) {
+        console.error(e);
+        historyListEl.textContent = '讀取歷史成績時發生錯誤。';
+      }
+    }
+
+    async function refreshWrongbookFromApi() {
+      const token = getAuthToken();
+      if (!token) return; // 未登入帳號就沿用 login_ack 的資料
+      try {
+        const res = await fetch('/api/wrongbook/me', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (!data.ok) return;
+        renderWrongList(data.wrongQuestions || []);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function refreshStatsFromMe() {
+      const token = getAuthToken();
+      if (!token) return;
+      try {
+        const res = await fetch('/auth/me', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (!data.ok) return;
+        if (data.user) {
+          playerInfo.textContent = `已登入帳號：${data.user.userId}（暱稱：${data.user.name}）`;
+        }
+        if (data.stats) {
+          myStatsEl.textContent = JSON.stringify(data.stats, null, 2);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function refreshStatsAndHistory() {
+      await refreshStatsFromMe();
+      await refreshHistory();
+      await refreshWrongbookFromApi();
+      await loadLeaderboard(); // 讓排行榜同步一下
+    }
+
+    // 建立房間
     document.getElementById('btnCreateRoom').onclick = () => {
       if (modeSelect.value !== 'room') {
         alert('建立房間只在「房間競賽」模式使用。');
@@ -445,6 +800,7 @@
       }
     });
 
+    // 加入房間
     document.getElementById('btnJoin').onclick = () => {
       if (modeSelect.value !== 'room') {
         alert('請先將模式切到「房間競賽」。');
@@ -476,6 +832,7 @@
       }
     });
 
+    // 題庫列表
     socket.on('bank_list', (banks) => {
       bankMetaMap = {};
       bankSelect.innerHTML = '';
@@ -613,6 +970,7 @@
 
     setBankControlsEnabled(false);
 
+    // 房主啟動房間測驗
     document.getElementById('btnRoomExam').onclick = () => {
       if (modeSelect.value !== 'room') {
         alert('請先將模式切換為「房間競賽」。');
@@ -692,7 +1050,9 @@
       }
     });
 
+    // WebSocket 即時排行榜（只在 last + 第 1 頁時更新）
     socket.on('leaderboard_update', (top) => {
+      if (leaderType !== 'last' || leaderPage !== 1) return;
       if (!top || top.length === 0) {
         leaderEl.textContent = '目前尚無排行榜資料。';
         return;
@@ -707,10 +1067,58 @@
 
     socket.on('connect', () => log('socket connected'));
     socket.on('disconnect', () => log('socket disconnected'));
+
+    // 排行榜多模式載入
+    async function loadLeaderboard() {
+      try {
+        const res = await fetch(`/api/leaderboard?type=${encodeURIComponent(leaderType)}&page=${leaderPage}&pageSize=${LEADER_PAGE_SIZE}`);
+        const data = await res.json();
+        if (!data.ok) {
+          leaderEl.textContent = '讀取排行榜失敗。';
+          return;
+        }
+        const entries = data.entries || [];
+        if (entries.length === 0) {
+          leaderEl.textContent = '目前此模式尚無排行榜資料。';
+        } else {
+          const lines = entries.map((e, idx) => {
+            const rank = (data.page - 1) * data.pageSize + idx + 1;
+            const name = e.name || e.userId;
+            return `${rank}. ${name}（${e.userId}） => ${e.score} 分`;
+          });
+          leaderEl.textContent = lines.join('\\n');
+        }
+        leaderPageInfo.textContent = `第 ${data.page} 頁`;
+        btnLeaderPrev.disabled = data.page <= 1;
+        btnLeaderNext.disabled = !data.hasNext;
+      } catch (e) {
+        console.error(e);
+        leaderEl.textContent = '讀取排行榜時發生錯誤。';
+      }
+    }
+
+    leaderTypeSelect.onchange = () => {
+      leaderType = leaderTypeSelect.value;
+      leaderPage = 1;
+      loadLeaderboard();
+    };
+    btnLeaderPrev.onclick = () => {
+      if (leaderPage > 1) {
+        leaderPage--;
+        loadLeaderboard();
+      }
+    };
+    btnLeaderNext.onclick = () => {
+      leaderPage++;
+      loadLeaderboard();
+    };
+
+    // 自動登入 + 回房
     function autoLoginAndRejoin() {
       try {
         const rawProfile = localStorage.getItem(PLAYER_PROFILE_KEY);
         const rawState = localStorage.getItem(USER_STATE_KEY);
+        const token = getAuthToken();
 
         let name = 'Player';
         let userId = '';
@@ -724,10 +1132,16 @@
         if (rawState) {
           const st = JSON.parse(rawState);
           if (st.name) name = st.name;
+          if (st.userId) userId = st.userId;
           if (st.roomJoined) joinedRoom = st.roomJoined;
         }
 
-        // 自動登入：帶上 userId，讓後端認得是同一個玩家
+        // 若有 JWT token，就從 /auth/me 拉一次
+        if (token) {
+          refreshStatsAndHistory();
+        }
+
+        // 自動登入 socket：帶上 userId，讓後端認得是同一個玩家
         if (name) {
           socket.emit('login', { name, userId });
         }
@@ -744,9 +1158,18 @@
     (function initialLoad() {
       restoreUserState();
       updateModeUI();
-      autoLoginAndRejoin();   // ★ 新增這行
+      autoLoginAndRejoin();
+      loadLeaderboard();
     })();
 
+    // PWA service worker 註冊
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch((err) => {
+          console.log('SW register failed', err);
+        });
+      });
+    }
   </script>
 </body>
 

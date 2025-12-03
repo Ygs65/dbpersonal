@@ -1,176 +1,108 @@
 // admin.js
-// 終端機管理工具：列出 / 查看 / 刪除房間 ＋ 清除該房間題庫
-// 使用 ioredis, 本機 Redis
+// 簡易管理腳本：可在終端機操作 Redis 題庫與房間設定
+// 使用方式示例：
+//   node admin.js create-room room1
+//   node admin.js import-json room1 iot ./iot_bank.json
+//   node admin.js list-banks room1
 
-import readline from 'readline';
+import fs from 'fs';
 import Redis from 'ioredis';
 
-const redis = new Redis({
-  host: '127.0.0.1',
-  port: 6379
-});
+const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const redis = new Redis(redisUrl);
 
-redis.on('error', (err) => {
-  console.error('[Redis] error:', err);
-});
+const ROOM_SETTINGS_KEY = (roomId) => `room:${roomId}:settings`;
+const BANK_KEY = (roomId, bankId) => `bank:${roomId}:${bankId}`;
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
+function normalizeJSONQuestions(data) {
+  let arr = [];
+  if (Array.isArray(data)) arr = data;
+  else if (Array.isArray(data.questions)) arr = data.questions;
+  else return [];
 
-function ask(q) {
-  return new Promise((resolve) => {
-    rl.question(q, (ans) => resolve(ans.trim()));
-  });
+  return arr.map((q) => {
+    const topic = q.topic || '';
+    const tag = q.tag || '';
+    const text = q.text || '';
+    const options = Array.isArray(q.options) ? q.options : [];
+    let answers = [];
+    if (Array.isArray(q.answers)) {
+      answers = q.answers.map(x => Number(x)).filter(x => !isNaN(x));
+    } else if (typeof q.answer === 'number') {
+      answers = [q.answer];
+    }
+    if (answers.length === 0 && options.length >= 1) answers = [0];
+    const type = q.type || (answers.length > 1 ? 'multi' : 'single');
+    const explanation = q.explanation || '';
+    return { topic, tag, text, options, answers, type, explanation };
+  }).filter(q => q.text && q.options.length >= 2);
 }
 
-async function listRooms() {
-  const keys = await redis.keys('room:*:settings');
-  if (keys.length === 0) {
-    console.log('\n目前沒有任何房間（Redis 中沒有 room:*:settings）。\n');
+async function createRoom(roomId) {
+  const key = ROOM_SETTINGS_KEY(roomId);
+  const exists = await redis.exists(key);
+  if (exists) {
+    console.log('房間已存在:', roomId);
     return;
   }
-  console.log('\n目前房間列表：');
-  keys.forEach((k, idx) => {
-    const parts = k.split(':'); // room:{roomId}:settings
-    const roomId = parts[1] || '(未知)';
-    console.log(`  ${idx + 1}. 房間 ID = ${roomId} （key: ${k}）`);
-  });
-  console.log('');
+  const settings = {
+    roomId,
+    hostId: 'admin-cli',
+    createdAt: Date.now()
+  };
+  await redis.set(key, JSON.stringify(settings));
+  console.log('已建立房間:', roomId);
 }
 
-async function showRoomDetail() {
-  const roomId = await ask('請輸入要查看的房間 ID：');
-  if (!roomId) {
-    console.log('房間 ID 不可為空。\n');
-    return;
-  }
+async function importJson(roomId, bankId, filePath) {
+  const text = fs.readFileSync(filePath, 'utf-8');
+  const data = JSON.parse(text);
+  const questions = normalizeJSONQuestions(data);
+  const key = BANK_KEY(roomId, bankId);
+  await redis.set(key, JSON.stringify({ id: bankId, name: bankId, questions }));
+  console.log(`已將 ${filePath} 匯入為房間 ${roomId} 的題庫 ${bankId}，共有 ${questions.length} 題。`);
+}
 
-  const settingsKey = `room:${roomId}:settings`;
-  const examKey = `room:${roomId}:exam`;
-  const banksPattern = `bank:${roomId}:*`;
-
-  const exists = await redis.exists(settingsKey);
-  if (!exists) {
-    console.log(`\n找不到房間 ${roomId} 的設定（${settingsKey} 不存在）。\n`);
-    return;
-  }
-
-  console.log(`\n===== 房間 ${roomId} 設定 =====`);
-  const settingsJson = await redis.get(settingsKey);
-  if (settingsJson) {
+async function listBanks(roomId) {
+  const pattern = BANK_KEY(roomId, '*');
+  const keys = await redis.keys(pattern);
+  console.log('房間', roomId, '題庫列表：');
+  for (const k of keys) {
+    const json = await redis.get(k);
     try {
-      const obj = JSON.parse(settingsJson);
-      console.log('room:settings =', JSON.stringify(obj, null, 2));
+      const obj = JSON.parse(json);
+      const count = Array.isArray(obj.questions) ? obj.questions.length : 0;
+      console.log('-', obj.id || k, '題數:', count);
     } catch {
-      console.log('room:settings (非 JSON)：', settingsJson);
-    }
-  } else {
-    console.log('(room:settings 內容為空)');
-  }
-
-  console.log('\n----- 最新考試資訊 (room:exam) -----');
-  const examJson = await redis.get(examKey);
-  if (examJson) {
-    try {
-      const obj = JSON.parse(examJson);
-      console.log('room:exam =', JSON.stringify(obj, null, 2));
-    } catch {
-      console.log('room:exam (非 JSON)：', examJson);
-    }
-  } else {
-    console.log('(尚無考試資訊或 key 不存在)');
-  }
-
-  console.log('\n----- 題庫（bank）相關 key -----');
-  const bankKeys = await redis.keys(banksPattern);
-  if (bankKeys.length === 0) {
-    console.log('(此房間沒有任何題庫)');
-  } else {
-    bankKeys.forEach((k) => console.log(' ', k));
-  }
-  console.log('');
-}
-
-async function deleteRoom() {
-  const roomId = await ask('請輸入要刪除的房間 ID：');
-  if (!roomId) {
-    console.log('房間 ID 不可為空。\n');
-    return;
-  }
-
-  const settingsKey = `room:${roomId}:settings`;
-  const exists = await redis.exists(settingsKey);
-  if (!exists) {
-    console.log(`\n找不到房間 ${roomId}，不需刪除（${settingsKey} 不存在）。\n`);
-    return;
-  }
-
-  console.log(`\n警告：這會刪除房間 ${roomId} 的所有相關資料：`);
-  console.log(`  - room:${roomId}:*`);
-  console.log(`  - bank:${roomId}:*`);
-  console.log('  （包含此房間的題庫、最新考試設定等等）\n');
-
-  const confirm = await ask('確定要刪除嗎？輸入 "YES" 確認：');
-  if (confirm !== 'YES') {
-    console.log('已取消刪除操作。\n');
-    return;
-  }
-
-  const patterns = [`room:${roomId}:*`, `bank:${roomId}:*`];
-  let allKeys = [];
-  for (const p of patterns) {
-    const ks = await redis.keys(p);
-    allKeys = allKeys.concat(ks);
-  }
-
-  if (allKeys.length === 0) {
-    console.log('沒有找到任何相關 key，可能已被清除。\n');
-    return;
-  }
-
-  const delCount = await redis.del(allKeys);
-  console.log(`\n已刪除房間 ${roomId} 相關 key 共 ${delCount} 筆：`);
-  allKeys.forEach((k) => console.log('  -', k));
-  console.log('');
-}
-
-async function mainMenu() {
-  while (true) {
-    console.log('============================');
-    console.log(' Redis 管理工具（房間管理）');
-    console.log('============================');
-    console.log('1) 列出所有房間');
-    console.log('2) 查看單一房間詳細資料');
-    console.log('3) 刪除房間（同時清除此房間題庫）');
-    console.log('4) 離開');
-    console.log('----------------------------');
-
-    const choice = await ask('請選擇功能 (1-4)：');
-    switch (choice) {
-      case '1':
-        await listRooms();
-        break;
-      case '2':
-        await showRoomDetail();
-        break;
-      case '3':
-        await deleteRoom();
-        break;
-      case '4':
-        console.log('Bye!');
-        rl.close();
-        await redis.quit();
-        process.exit(0);
-        return;
-      default:
-        console.log('無效選擇，請重新輸入。\n');
+      console.log('-', k);
     }
   }
 }
 
-(async () => {
-  console.log('已連線到 Redis (127.0.0.1:6379)。\n');
-  await mainMenu();
-})();
+async function main() {
+  const [cmd, a, b, c] = process.argv.slice(2);
+  if (!cmd || cmd === 'help') {
+    console.log('用法:');
+    console.log('  node admin.js create-room <roomId>');
+    console.log('  node admin.js import-json <roomId> <bankId> <filePath>');
+    console.log('  node admin.js list-banks <roomId>');
+    process.exit(0);
+  }
+  try {
+    if (cmd === 'create-room') {
+      await createRoom(a);
+    } else if (cmd === 'import-json') {
+      await importJson(a, b, c);
+    } else if (cmd === 'list-banks') {
+      await listBanks(a);
+    } else {
+      console.log('未知指令，請使用 help');
+    }
+  } catch (e) {
+    console.error('執行失敗:', e);
+  } finally {
+    redis.disconnect();
+  }
+}
+
+main();
