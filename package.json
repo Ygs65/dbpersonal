@@ -1,10 +1,20 @@
 {
-  "name": "flashbattle_pro",
-  "version": "2.0.0",
+  "name": "flashbattle",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "admin": "node admin.js",
+    "client:install": "cd client && npm install",
+    "client:build": "cd client && npm run build",
+    "build-all": "npm run client:install && npm run client:build"
+  },
   "dependencies": {
-    "express": "^4",
-    "socket.io": "^4",
-    "jsonwebtoken": "^9",
-    "ioredis": "^5"
+    "express": "^4.18.2",
+    "ioredis": "^5.3.2",
+    "readline-sync": "^1.4.10",
+    "redis": "^5.10.0",
+    "socket.io": "^4.7.1"
   }
 }
