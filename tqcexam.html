@@ -1,12 +1,10 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 
 <head>
-  <meta charset="utf-8">
-  <title>FlashBattle Pro 考場 (tqcexam)</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#1976d2" />
-  <link rel="manifest" href="/manifest.json">
+  <title>客製化刷題（v4：未作答算錯＋滿分100）</title>
   <style>
     * {
       box-sizing: border-box;
@@ -15,636 +13,1280 @@
 
     body {
       margin: 0;
-      min-height: 100vh;
-      background: radial-gradient(circle at top, #e3f2fd 0, #f5f5f5 50%, #fafafa 100%);
+      background: #f5f5f5;
       display: flex;
       justify-content: center;
       align-items: flex-start;
+      min-height: 100vh;
     }
 
     .app {
+      background: #fff;
       width: 100%;
-      max-width: 1080px;
+      max-width: 520px;
       margin: 12px;
-      padding: 14px 16px 20px;
-      background: rgba(255, 255, 255, 0.96);
-      border-radius: 18px;
-      box-shadow: 0 10px 32px rgba(25, 118, 210, 0.16);
-      border: 1px solid rgba(255, 255, 255, 0.8);
+      padding: 16px 16px 24px;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .08);
     }
 
     h1 {
       font-size: 1.4rem;
-      margin: 0 0 6px;
       text-align: center;
+      margin: 0 0 12px;
     }
 
-    .subtitle {
-      font-size: .8rem;
-      text-align: center;
-      color: #546e7a;
-      margin-bottom: 10px;
-    }
-
-    .top-bar {
+    .tabs {
       display: flex;
-      flex-wrap: wrap;
-      gap: 6px 12px;
-      align-items: center;
-      justify-content: space-between;
-      font-size: .8rem;
-      padding: 6px 8px;
-      border-radius: 12px;
-      background: #f5f9ff;
-      border: 1px solid #e3f2fd;
+      border-radius: 999px;
+      background: #eee;
+      padding: 3px;
+      margin-bottom: 12px;
     }
 
-    .tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: .75rem;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #e3f2fd;
-      color: #1565c0;
-    }
-
-    .btn {
-      padding: 6px 12px;
-      border-radius: 999px;
+    .tab-btn {
+      flex: 1;
       border: none;
-      font-size: .8rem;
+      background: transparent;
+      padding: 8px 0;
+      border-radius: 999px;
+      font-size: .9rem;
       cursor: pointer;
-      background: linear-gradient(135deg, #1976d2, #1565c0);
+    }
+
+    .tab-btn.active {
+      background: #1976d2;
       color: #fff;
-      box-shadow: 0 3px 8px rgba(21, 101, 192, 0.28);
-      white-space: nowrap;
-      transition: transform .08s, box-shadow .12s;
     }
 
-    .btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 5px 13px rgba(21, 101, 192, 0.3);
+    .section {
+      display: none;
     }
 
-    .btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 6px rgba(21, 101, 192, 0.25);
+    .section.active {
+      display: block;
     }
 
-    .btn.secondary {
-      background: #eceff1;
-      color: #37474f;
-      box-shadow: none;
-    }
-
-    .btn.danger {
-      background: linear-gradient(135deg, #e53935, #c62828);
-      box-shadow: 0 3px 8px rgba(229, 57, 53, 0.3);
-    }
-
-    .btn:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-      box-shadow: none;
-      transform: none;
-    }
-
-    .timer {
-      font-weight: 600;
-      color: #c62828;
-    }
-
-    .main {
-      display: grid;
-      grid-template-columns: 2.3fr 1.2fr;
-      gap: 12px;
-      margin-top: 10px;
-    }
-
-    @media (max-width: 900px) {
-      .main {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .card {
-      border-radius: 14px;
-      border: 1px solid #e0e0e0;
-      padding: 10px 12px;
-      background: linear-gradient(135deg, #fafafa, #ffffff);
-      box-shadow: 0 3px 9px rgba(0, 0, 0, .04);
-    }
-
-    .card-title {
+    .row {
+      margin-bottom: 10px;
       font-size: .9rem;
-      font-weight: 600;
-      margin-bottom: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
     }
 
-    .question {
-      border-radius: 10px;
-      border: 1px solid #eceff1;
-      padding: 8px 10px;
-      margin-bottom: 8px;
-      background: #ffffff;
-    }
-
-    .question-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 4px;
-      gap: 8px;
-    }
-
-    .q-title {
-      font-size: .9rem;
-      font-weight: 600;
-    }
-
-    .q-topic {
-      font-size: .75rem;
-      color: #546e7a;
-    }
-
-    .options {
-      margin-top: 4px;
-      padding-left: 4px;
-    }
-
-    .option-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 3px;
+    label {
       font-size: .85rem;
+      color: #555;
+      display: block;
+      margin-bottom: 4px;
     }
 
-    .option-item input {
-      flex: 0 0 auto;
+    select,
+    input[type="number"],
+    input[type="text"] {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: .9rem;
     }
 
-    .option-label {
+    .inline-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 6px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .inline-row>div {
       flex: 1;
     }
 
-    .q-meta {
-      font-size: .75rem;
-      color: #78909c;
+    .small {
+      font-size: .8rem;
+      color: #777;
+    }
+
+    #bankInfo {
+      font-size: .8rem;
+      color: #777;
+      margin-bottom: 4px;
+    }
+
+    #sessionSummary {
+      font-size: .9rem;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    #timeArea {
+      font-size: .9rem;
+      color: #d32f2f;
+      margin-bottom: 8px;
+    }
+
+    .btn-small {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: none;
+      font-size: .85rem;
+      cursor: pointer;
+      background: #1976d2;
+      color: #fff;
+    }
+
+    .btn-outline {
+      background: #fff;
+      color: #1976d2;
+      border: 1px solid #1976d2;
+    }
+
+    .btn-danger {
+      background: #f44336;
+      color: #fff;
+    }
+
+    .q-card {
+      border-radius: 12px;
+      border: 1px solid #eee;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #fafafa;
+    }
+
+    .q-header {
+      font-size: .85rem;
+      color: #666;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .q-text {
+      font-size: .95rem;
+      margin-bottom: 6px;
+    }
+
+    .q-topic {
+      font-size: .8rem;
+      color: #999;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .option-btn {
+      width: 100%;
+      border: 1px solid #ddd;
+      background: #fff;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: .9rem;
+      text-align: left;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, transform .05s;
+    }
+
+    .option-btn:active {
+      transform: scale(.98);
+    }
+
+    .option-btn.correct {
+      background: #e6f7e6;
+      border-color: #4caf50;
+    }
+
+    .option-btn.wrong {
+      background: #ffe9e9;
+      border-color: #f44336;
+    }
+
+    .option-btn.selected {
+      border-color: #1976d2;
+      background: #e3f2fd;
+    }
+
+    .option-btn:disabled {
+      cursor: default;
+      opacity: .9;
+    }
+
+    .q-footer {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
       margin-top: 4px;
     }
 
-    .summary-text {
+    .q-footer button {
+      flex: 0 0 auto;
+    }
+
+    .q-footer-status {
+      font-size: .8rem;
+      color: #555;
+    }
+
+    .q-explanation {
       font-size: .85rem;
-      white-space: pre-wrap;
+      background: #f9f9f9;
+      border-left: 3px solid #2196f3;
+      padding: 6px 8px;
+      border-radius: 6px;
+      margin-top: 6px;
+      display: none;
+    }
+
+    .card {
+      border-radius: 12px;
+      background: #fafafa;
+      padding: 10px;
+      margin-bottom: 12px;
+      border: 1px solid #eee;
+    }
+
+    .card-title {
+      font-size: .95rem;
+      font-weight: 600;
+      margin-bottom: 6px;
     }
 
     textarea {
       width: 100%;
-      min-height: 80px;
-      border-radius: 10px;
-      border: 1px solid #cfd8dc;
+      min-height: 100px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
       padding: 6px 8px;
-      font-size: .8rem;
+      font-size: .85rem;
+      font-family: monospace;
       resize: vertical;
     }
 
-    input[type=file] {
+    .bank-list-item {
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      border: 1px solid #eee;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .bank-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    .bank-actions button {
+      flex: 1 1 45%;
+      padding: 4px 0;
+      border-radius: 999px;
+      border: none;
       font-size: .8rem;
+      cursor: pointer;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #eee;
+      font-size: .75rem;
+      margin-left: 4px;
     }
   </style>
 </head>
 
 <body>
+  <button onclick="window.location.href='/'"
+    style="margin:10px 0;padding:6px 12px;border-radius:999px;border:none;background:#1976d2;color:#fff;cursor:pointer;">
+    回到 FlashBattle 主頁
+  </button>
   <div class="app">
-    <h1>FlashBattle Pro 考場</h1>
-    <div class="subtitle">
-      本頁負責「多題作答」及計分，並把結果送回 Redis：<code>/api/exam_result</code>。<br>
-      若由房間啟動，會自動載入房主指定的題庫與時間限制；否則為個人練習模式，可自行匯入 JSON 題庫。
+    <h1>客製化刷題（v4：未作答算錯＋滿分100）</h1>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="quiz">刷題</button>
+      <button class="tab-btn" data-tab="manage">題庫管理</button>
     </div>
 
-    <div class="top-bar">
-      <div>
-        <span id="modeTag" class="tag">模式：偵測中...</span>
+    <!-- 刷題區 -->
+    <div id="quiz" class="section active">
+      <div class="row">
+        <label for="quizBankSelect">選擇題庫：</label>
+        <select id="quizBankSelect"></select>
       </div>
-      <div>
-        玩家：<span id="playerInfo"></span>
-        ｜ 房間：<span id="roomInfo"></span>
-        ｜ 題庫：<span id="bankInfo"></span>
+
+      <div class="inline-row">
+        <div>
+          <label for="topicFilterSelect">篩選主題（章節）：</label>
+          <select id="topicFilterSelect">
+            <option value="__all__">全部主題</option>
+          </select>
+        </div>
       </div>
-      <div>
-        剩餘時間：<span id="timer" class="timer">未啟動</span>
+
+      <div class="inline-row">
+        <div>
+          <label for="modeSelect">練習模式：</label>
+          <select id="modeSelect">
+            <option value="all">一般（所有題目）</option>
+            <option value="wrong">錯題本（只刷錯過的題目）</option>
+          </select>
+        </div>
       </div>
-      <div>
-        <button id="btnBackHome" class="btn secondary">回首頁 / 房間大廳</button>
-        <button id="btnSubmit" class="btn danger">交卷（送出成績）</button>
+
+      <div class="inline-row">
+        <div>
+          <label for="questionCountInput">本次題數（空白 = 全部）：</label>
+          <input type="number" id="questionCountInput" min="1" />
+        </div>
+        <div>
+          <label for="timeLimitInput">時間限制（分鐘，可空）：</label>
+          <input type="number" id="timeLimitInput" min="1" />
+        </div>
       </div>
+
+      <button id="startSessionBtn" class="btn-small" style="width:100%;margin-bottom:6px;">
+        產生本次練習（一次顯示全部題目）
+      </button>
+      <button id="submitAllBtn" class="btn-small btn-danger" style="width:100%;margin-bottom:8px;" disabled>
+        送出作答並批改
+      </button>
+
+      <div id="bankInfo"></div>
+      <div id="sessionSummary"></div>
+      <div id="timeArea" class="hidden">剩餘時間：<span id="timeRemaining">00:00</span></div>
+
+      <div id="questionsContainer"></div>
     </div>
 
-    <div class="main">
+    <!-- 題庫管理區 -->
+    <div id="manage" class="section">
       <div class="card">
-        <div class="card-title">
-          題目區
+        <div class="card-title">匯入題庫（JSON / CSV）</div>
+        <div class="row">
+          <label for="importTargetBank">匯入到哪個題庫？</label>
+          <select id="importTargetBank"></select>
         </div>
-        <div id="questionList"></div>
+        <div class="row" id="newBankNameRow">
+          <label for="newBankName">新題庫名稱：</label>
+          <input type="text" id="newBankName" placeholder="例如：物聯網 TQC 題庫" />
+        </div>
+
+        <div class="inline-row">
+          <span>匯入格式：</span>
+          <select id="importFormat">
+            <option value="json">JSON</option>
+            <option value="csv">CSV（簡易，單選）</option>
+          </select>
+          <button class="btn-small btn-outline" id="downloadTemplateBtn">下載範例</button>
+        </div>
+
+        <div class="inline-row">
+          <span>檔案匯入：</span>
+          <input type="file" id="fileInput" accept=".json,.csv" />
+        </div>
+
+        <div class="row">
+          <label for="importText">或貼上文字內容：</label>
+          <textarea id="importText" placeholder="貼上 JSON 或 CSV 內容"></textarea>
+        </div>
+
+        <button class="btn-small" id="importBtn">開始匯入</button>
+        <div class="small" style="margin-top:6px;">
+          ● JSON：可直接匯入 <code>iot_tqc_question_bank.json</code>，或任意題目陣列：<br>
+          <code>[{"text","options","answers","type","explanation","topic"}, ...]</code><br>
+          ● CSV：第一列欄位：<br>
+          <code>topic,text,optionA,optionB,optionC,optionD,answer,explanation</code>，
+          answer 填 1~4 表示正確選項（目前 CSV 僅支援單選）。
+        </div>
       </div>
+
       <div class="card">
-        <div class="card-title">
-          作答資訊 / 匯入題庫（個人模式用）
-        </div>
-        <div class="summary-text" id="summaryBox">
-          尚未載入題目。若是房間啟動的考試，請等待房主指令；若是個人模式，可在下方匯入 JSON 題庫。
-        </div>
-        <hr style="margin:8px 0;">
-        <div id="personalImportBox">
-          <div style="font-size:.8rem;margin-bottom:4px;">
-            個人練習模式：請匯入 JSON 題庫檔（格式：<code>[{ text, options, answers, type, topic, tag, explanation }...]</code>）。
-          </div>
-          <input type="file" id="fileInput" accept=".json">
-          <div style="margin:4px 0;font-size:.75rem;color:#78909c;">
-            或直接貼上 JSON 文字：
-          </div>
-          <textarea id="jsonInput" placeholder='[{"text":"1+1=?","options":["1","2"],"answers":[1],"type":"single"}]'></textarea>
-          <button id="btnLoadJson" class="btn" style="margin-top:6px;">載入為個人題庫</button>
+        <div class="card-title">目前題庫</div>
+        <div id="bankList"></div>
+        <div class="small">
+          ● 題庫與錯題紀錄儲存在瀏覽器 localStorage。<br>
+          ● 可匯出 JSON 備份。
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    const ROOM_RULES_KEY = 'fb_room_exam_rules';
-    const PLAYER_PROFILE_KEY = 'fb_player_profile_v1';
+    const STORAGE_KEY = "customQuizBanks_allInOnePage_v4";
+    const ROOM_RULES_KEY = "fb_room_exam_rules";  // 從 index 存進來的房間規則
+    const PLAYER_PROFILE_KEY = "fb_player_profile_v1";
 
-    const modeTag = document.getElementById('modeTag');
-    const playerInfoEl = document.getElementById('playerInfo');
-    const roomInfoEl = document.getElementById('roomInfo');
-    const bankInfoEl = document.getElementById('bankInfo');
-    const timerEl = document.getElementById('timer');
-    const questionListEl = document.getElementById('questionList');
-    const summaryBox = document.getElementById('summaryBox');
-    const personalImportBox = document.getElementById('personalImportBox');
 
-    const btnBackHome = document.getElementById('btnBackHome');
-    const btnSubmit = document.getElementById('btnSubmit');
-    const fileInput = document.getElementById('fileInput');
-    const jsonInput = document.getElementById('jsonInput');
-    const btnLoadJson = document.getElementById('btnLoadJson');
-
-    let playerId = 'guest';
-    let playerName = 'Player';
-    let mode = 'personal';
-    let roomId = '';
-    let bankId = '';
-    let questions = [];
-    let timeLimitMinutes = 0;
-    let timerRemainSec = 0;
-    let timerHandle = null;
-    const answersMap = {}; // qIndex -> [optionIndex]
-
-    function loadProfile() {
+    function loadBanks() {
       try {
-        const raw = localStorage.getItem(PLAYER_PROFILE_KEY);
-        if (!raw) return;
-        const p = JSON.parse(raw);
-        if (p.playerId) playerId = p.playerId;
-        if (p.name) playerName = p.name;
-      } catch (e) { }
+        const d = localStorage.getItem(STORAGE_KEY);
+        if (!d) return [];
+        return JSON.parse(d);
+      } catch (e) {
+        console.error(e);
+        return [];
+      }
+    }
+    function saveBanks(b) { localStorage.setItem(STORAGE_KEY, JSON.stringify(b)); }
+
+    let banks = loadBanks();
+    let roomRules = null;
+    try {
+      const r = localStorage.getItem(ROOM_RULES_KEY);
+      if (r) {
+        roomRules = JSON.parse(r);
+      }
+    } catch (e) {
+      console.error("讀取房間規則失敗", e);
+    }
+    if (banks.length === 0) {
+      banks = [{
+        id: "sample-" + Date.now(),
+        name: "範例題庫",
+        createdAt: new Date().toISOString(),
+        questions: [
+          {
+            id: 1,
+            topic: "程式基礎",
+            text: "在程式語言中，通常用來儲存『真 / 假』這種資料型態稱為？",
+            options: ["integer（整數）", "string（字串）", "boolean（布林值）", "float（浮點數）"],
+            answers: [2],
+            type: "single",
+            explanation: "boolean（布林值）用來表示 true / false。"
+          },
+          {
+            id: 2,
+            topic: "多選示範",
+            text: "下列哪些屬於前端技術？",
+            options: ["HTML", "CSS", "JavaScript", "MySQL"],
+            answers: [0, 1, 2],
+            type: "multi",
+            explanation: "HTML / CSS / JavaScript 通常用在前端，MySQL 是資料庫。"
+          }
+        ]
+      }];
+      saveBanks(banks);
     }
 
-    function detectRoomRules() {
-      try {
-        const raw = localStorage.getItem(ROOM_RULES_KEY);
-        if (!raw) {
-          mode = 'personal';
-          return;
-        }
-        const rules = JSON.parse(raw);
-        if (!rules || !rules.questions || rules.questions.length === 0) {
-          mode = 'personal';
-          return;
-        }
-        mode = 'room';
-        roomId = rules.roomId || '';
-        bankId = rules.bankId || '';
-        questions = normalizeQuestions(rules.questions);
-        timeLimitMinutes = Number(rules.timeLimitMinutes || 0);
-      } catch (e) {
-        mode = 'personal';
+    const tabButtons = document.querySelectorAll(".tab-btn");
+    const sections = document.querySelectorAll(".section");
+    tabButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab;
+        tabButtons.forEach(b => b.classList.toggle("active", b === btn));
+        sections.forEach(sec => sec.classList.toggle("active", sec.id === tab));
+      });
+    });
+
+    const quizBankSelect = document.getElementById("quizBankSelect");
+    const topicFilterSelect = document.getElementById("topicFilterSelect");
+    const modeSelect = document.getElementById("modeSelect");
+    const questionCountInput = document.getElementById("questionCountInput");
+    const timeLimitInput = document.getElementById("timeLimitInput");
+    const startSessionBtn = document.getElementById("startSessionBtn");
+    const submitAllBtn = document.getElementById("submitAllBtn");
+    const bankInfoDiv = document.getElementById("bankInfo");
+    const sessionSummaryDiv = document.getElementById("sessionSummary");
+    const questionsContainer = document.getElementById("questionsContainer");
+    const timeArea = document.getElementById("timeArea");
+    const timeRemainingSpan = document.getElementById("timeRemaining");
+
+    const importTargetBankSelect = document.getElementById("importTargetBank");
+    const newBankNameRow = document.getElementById("newBankNameRow");
+    const newBankNameInput = document.getElementById("newBankName");
+    const bankListDiv = document.getElementById("bankList");
+    const importFormatSelect = document.getElementById("importFormat");
+    const fileInput = document.getElementById("fileInput");
+    const importTextArea = document.getElementById("importText");
+    const importBtn = document.getElementById("importBtn");
+    const downloadTemplateBtn = document.getElementById("downloadTemplateBtn");
+    function applyRoomRulesIfAny() {
+      if (!roomRules) return;
+
+      // 1. 用房間題目做出一個暫時題庫（不會影響你原本的題庫）
+      if (Array.isArray(roomRules.questions) && roomRules.questions.length > 0) {
+        const roomBankId = `room-${roomRules.roomId}-${roomRules.bankId || 'default'}`;
+
+        const normalized = roomRules.questions.map((q, idx) => ({
+          id: q.id || q.qid || q.code || (typeof q.no !== "undefined" ? String(q.no) : idx + 1),
+          topic: q.topic || "",
+          text: q.text || q.question || "",
+          options: Array.isArray(q.options) ? q.options : [],
+          answers: Array.isArray(q.answers) ? q.answers : [q.answer ?? 0],
+          type: q.type || ((q.answers && q.answers.length > 1) ? "multi" : "single"),
+          explanation: q.explanation || ""
+        })).filter(q => q.text && q.options.length >= 2);
+
+        const roomBank = {
+          id: roomBankId,
+          name: `房間 ${roomRules.roomId} 測驗 (${roomRules.bankId || ''})`,
+          createdAt: new Date().toISOString(),
+          questions: normalized
+        };
+
+        // 把房間題庫插到最前面
+        banks = [roomBank, ...banks];
+        saveBanks(banks);
+        refreshBankSelects();
+
+        quizBankSelect.value = roomBankId;
+        initCurrentBank();
+      }
+
+      // 2. 題數與時間（注意這裡用的是 timeLimitMinutes）
+      if (roomRules.questionCount) {
+        questionCountInput.value = roomRules.questionCount;
+      }
+      if (roomRules.timeLimitMinutes) {
+        timeLimitInput.value = roomRules.timeLimitMinutes;
+      }
+
+      // 3. 顯示提示文字
+      const info = document.createElement("div");
+      info.className = "small";
+      info.style.color = "#d32f2f";
+      info.style.marginBottom = "6px";
+      info.textContent =
+        `目前依照房間 ${roomRules.roomId || ""} 規則作答：題數 ${roomRules.questionCount || "未指定"} 題、` +
+        `時間約 ${roomRules.timeLimitMinutes || "-"} 分。若改成個人練習，可自行修改上方欄位。`;
+      sessionSummaryDiv.parentNode.insertBefore(info, sessionSummaryDiv);
+
+      // 4. 直接開始本次練習（自動幫全房玩家按下「產生本次練習」）
+      startSession();
+    }
+
+
+    let currentBank = null,
+      sessionIndices = [],
+      answeredCount = 0,
+      correctCount = 0,
+      answeredMap = {},
+      sessionActive = false,
+      timerId = null,
+      remainingSeconds = 0;
+
+    function formatDate(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+    function countWrongQuestions(bank, topicFilter = "__all__") {
+      return bank.questions.filter(q => q.wrong === true && (topicFilter === "__all__" || q.topic === topicFilter)).length;
+    }
+    function toggleNewBankNameRow() {
+      newBankNameRow.style.display = importTargetBankSelect.value === "__new__" ? "block" : "none";
+    }
+    function shuffle(a) {
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
       }
     }
 
-    function normalizeQuestions(rawQs) {
-      if (!Array.isArray(rawQs)) return [];
-      return rawQs.map((q) => {
-        const text = q.text || q.question || '';
+    function buildTopicOptionsForCurrentBank() {
+      topicFilterSelect.innerHTML = "";
+      const optAll = document.createElement("option");
+      optAll.value = "__all__";
+      optAll.textContent = "全部主題";
+      topicFilterSelect.appendChild(optAll);
+      if (!currentBank) return;
+      const topics = new Set();
+      currentBank.questions.forEach(q => {
+        if (q.topic && q.topic.trim() !== "") topics.add(q.topic.trim());
+      });
+      Array.from(topics).sort().forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = t;
+        topicFilterSelect.appendChild(opt);
+      });
+    }
+
+    function refreshBankSelects() {
+      const prevQuiz = quizBankSelect.value;
+      const prevImport = importTargetBankSelect.value || "__new__";
+
+      quizBankSelect.innerHTML = "";
+      banks.forEach(b => {
+        const opt = document.createElement("option");
+        opt.value = b.id;
+        opt.textContent = `${b.name}（${b.questions.length} 題，錯題 ${countWrongQuestions(b)} 題）`;
+        quizBankSelect.appendChild(opt);
+      });
+
+      importTargetBankSelect.innerHTML = "";
+      const optNew = document.createElement("option");
+      optNew.value = "__new__";
+      optNew.textContent = "新建題庫";
+      importTargetBankSelect.appendChild(optNew);
+      banks.forEach(b => {
+        const o = document.createElement("option");
+        o.value = b.id;
+        o.textContent = `加入：${b.name}`;
+        importTargetBankSelect.appendChild(o);
+      });
+
+      if (prevQuiz && banks.some(b => b.id === prevQuiz)) quizBankSelect.value = prevQuiz;
+      else if (banks[0]) quizBankSelect.value = banks[0].id;
+
+      if (prevImport && (prevImport === "__new__" || banks.some(b => b.id === prevImport)))
+        importTargetBankSelect.value = prevImport;
+      else
+        importTargetBankSelect.value = "__new__";
+
+      toggleNewBankNameRow();
+
+      bankListDiv.innerHTML = "";
+      if (banks.length === 0) {
+        bankListDiv.textContent = "尚無任何題庫。";
+      } else {
+        banks.forEach(b => {
+          const div = document.createElement("div");
+          div.className = "bank-list-item";
+          const wrong = countWrongQuestions(b);
+          div.innerHTML =
+            `<div><span>${b.name}</span><span class="badge">${b.questions.length} 題</span><span class="badge">錯題 ${wrong} 題</span></div>
+             <div class="small">建立日期：${formatDate(b.createdAt) || "—"}</div>`;
+          const actions = document.createElement("div");
+          actions.className = "bank-actions";
+
+          const useBtn = document.createElement("button");
+          useBtn.textContent = "用這個題庫刷題";
+          useBtn.className = "btn-small";
+          useBtn.onclick = () => { quizBankSelect.value = b.id; initCurrentBank(); };
+
+          const exportBtn = document.createElement("button");
+          exportBtn.textContent = "匯出 JSON";
+          exportBtn.className = "btn-small btn-outline";
+          exportBtn.onclick = () => exportBankJSON(b);
+
+          const clearWrongBtn = document.createElement("button");
+          clearWrongBtn.textContent = "清空錯題本";
+          clearWrongBtn.className = "btn-small btn-outline";
+          clearWrongBtn.onclick = () => clearWrongForBank(b.id);
+
+          const delBtn = document.createElement("button");
+          delBtn.textContent = "刪除題庫";
+          delBtn.className = "btn-small btn-danger";
+          delBtn.onclick = () => deleteBank(b.id);
+
+          actions.append(useBtn, exportBtn, clearWrongBtn, delBtn);
+          div.appendChild(actions);
+          bankListDiv.appendChild(div);
+        });
+      }
+
+      initCurrentBank();
+    }
+
+    function initCurrentBank() {
+      const id = quizBankSelect.value;
+      currentBank = banks.find(b => b.id === id);
+      questionsContainer.innerHTML = "";
+      submitAllBtn.disabled = true;
+      sessionActive = false;
+      stopTimer();
+      if (!currentBank) {
+        bankInfoDiv.textContent = "目前沒有題庫可用。";
+        sessionSummaryDiv.textContent = "";
+        return;
+      }
+      const wrong = countWrongQuestions(currentBank);
+      bankInfoDiv.textContent = `使用題庫：${currentBank.name}（共 ${currentBank.questions.length} 題，錯題 ${wrong} 題）`;
+      buildTopicOptionsForCurrentBank();
+      updateSessionPlanInfo();
+    }
+
+    function exportBankJSON(bank) {
+      const dataStr = JSON.stringify(bank.questions, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${bank.name.replace(/\s+/g, "_")}_questions.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function clearWrongForBank(id) {
+      const b = banks.find(x => x.id === id);
+      if (!b) return;
+      if (!confirm(`確定要清空「${b.name}」的錯題本嗎？`)) return;
+      b.questions.forEach(q => { delete q.wrong; });
+      saveBanks(banks);
+      refreshBankSelects();
+    }
+
+    function deleteBank(id) {
+      const b = banks.find(x => x.id === id);
+      if (!b) return;
+      if (!confirm(`確定要刪除題庫「${b.name}」嗎？此動作無法復原。`)) return;
+      banks = banks.filter(x => x.id !== id);
+      saveBanks(banks);
+      refreshBankSelects();
+    }
+
+    downloadTemplateBtn.onclick = () => {
+      const fmt = importFormatSelect.value;
+      if (fmt === "json") {
+        const example = [{
+          topic: "主題範例",
+          text: "這是一題單選題的題目內容？",
+          options: ["選項A", "選項B", "選項C", "選項D"],
+          answers: [1],
+          type: "single",
+          explanation: "這裡是解析文字。"
+        }];
+        const blob = new Blob([JSON.stringify(example, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "quiz_template.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        const header = "topic,text,optionA,optionB,optionC,optionD,answer,explanation\n";
+        const row = "主題範例,這是一題單選題的題目內容？,選項A,選項B,選項C,選項D,2,這裡是解析文字。\n";
+        const blob = new Blob([header + row], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "quiz_template.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    };
+
+    importTargetBankSelect.onchange = toggleNewBankNameRow;
+
+    fileInput.onchange = () => {
+      const f = fileInput.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = e => { importTextArea.value = e.target.result; };
+      r.readAsText(f, "utf-8");
+    };
+
+    function parseSimpleCSV(text) {
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+      if (lines.length < 2) return [];
+      const header = lines[0].split(",");
+      const idxTopic = header.indexOf("topic"),
+        idxText = header.indexOf("text"),
+        idxA = header.indexOf("optionA"),
+        idxB = header.indexOf("optionB"),
+        idxC = header.indexOf("optionC"),
+        idxD = header.indexOf("optionD"),
+        idxAns = header.indexOf("answer"),
+        idxExp = header.indexOf("explanation");
+      if (idxText === -1 || idxA === -1 || idxB === -1 || idxAns === -1) {
+        alert("CSV 欄位至少需要：topic,text,optionA,optionB,optionC,optionD,answer,explanation");
+        return [];
+      }
+      const qs = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",");
+        if (cols.length < header.length) continue;
+        const topic = idxTopic >= 0 ? cols[idxTopic].trim() : "";
+        const textVal = cols[idxText].trim();
+        if (!textVal) continue;
+        const optA = cols[idxA]?.trim() || "";
+        const optB = cols[idxB]?.trim() || "";
+        const optC = idxC >= 0 ? (cols[idxC]?.trim() || "") : "";
+        const optD = idxD >= 0 ? (cols[idxD]?.trim() || "") : "";
+        const ansStr = cols[idxAns]?.trim() || "";
+        const exp = idxExp >= 0 ? (cols[idxExp]?.trim() || "") : "";
+        const n = parseInt(ansStr, 10);
+        if (isNaN(n) || n < 1) continue;
+        const options = [optA, optB];
+        if (optC) options.push(optC);
+        if (optD) options.push(optD);
+        const ansIdx = n - 1;
+        if (ansIdx < 0 || ansIdx >= options.length) continue;
+        qs.push({
+          topic: topic,
+          text: textVal,
+          options: options,
+          answers: [ansIdx],
+          type: "single",
+          explanation: exp
+        });
+      }
+      return qs;
+    }
+
+    function normalizeJSONQuestions(data) {
+      let arr = [];
+      if (Array.isArray(data)) arr = data;
+      else if (Array.isArray(data.questions)) arr = data.questions;
+      else return [];
+      return arr.map(q => {
+        const topic = q.topic || "";
+        const text = q.text || "";
         const options = Array.isArray(q.options) ? q.options : [];
         let answers = [];
-        if (Array.isArray(q.answers)) {
+        if (Array.isArray(q.answers))
           answers = q.answers.map(x => Number(x)).filter(x => !isNaN(x));
-        } else if (typeof q.answer === 'number') {
+        else if (typeof q.answer === "number")
           answers = [q.answer];
-        } else if (typeof q.answers === 'string') {
-          answers = q.answers.split(',').map(x => parseInt(x, 10)).filter(x => !isNaN(x));
-        }
-        const type = q.type || (answers.length > 1 ? 'multi' : 'single');
-        const topic = q.topic || '';
-        const tag = q.tag || '';
-        const explanation = q.explanation || '';
-        return { text, options, answers, type, topic, tag, explanation };
+        if (answers.length === 0 && options.length >= 1) answers = [0];
+        const type = q.type || (answers.length > 1 ? "multi" : "single");
+        const explanation = q.explanation || "";
+        return { topic, text, options, answers, type, explanation };
       }).filter(q => q.text && q.options.length >= 2);
     }
 
-    function renderHeader() {
-      playerInfoEl.textContent = `${playerName} (${playerId})`;
-      if (mode === 'room') {
-        modeTag.textContent = '模式：房間競賽';
-        roomInfoEl.textContent = roomId || '無';
-        bankInfoEl.textContent = bankId || '未指定';
-        personalImportBox.style.display = 'none';
-      } else {
-        modeTag.textContent = '模式：個人練習';
-        roomInfoEl.textContent = '（個人模式）';
-        bankInfoEl.textContent = bankId || '自訂題庫';
-        personalImportBox.style.display = 'block';
+    function parseImportText() {
+      const fmt = importFormatSelect.value;
+      const raw = importTextArea.value.trim();
+      if (!raw) {
+        alert("請先貼上內容或選擇檔案。");
+        return [];
       }
-    }
-
-    function renderQuestions() {
-      questionListEl.innerHTML = '';
-      if (!questions || questions.length === 0) {
-        const p = document.createElement('p');
-        p.textContent = '目前尚未載入題目。請匯入 JSON 題庫，或回首頁由房主啟動考試。';
-        p.style.color = '#888';
-        p.style.fontSize = '.85rem';
-        questionListEl.appendChild(p);
-        summaryBox.textContent = '尚未載入題目。';
-        return;
-      }
-      questions.forEach((q, idx) => {
-        const qDiv = document.createElement('div');
-        qDiv.className = 'question';
-
-        const header = document.createElement('div');
-        header.className = 'question-header';
-
-        const title = document.createElement('div');
-        title.className = 'q-title';
-        title.textContent = `Q${idx + 1}. ${q.text}`;
-
-        const topic = document.createElement('div');
-        topic.className = 'q-topic';
-        topic.textContent = (q.topic ? `主題：${q.topic} ｜` : '') + (q.type === 'multi' ? '多選題' : '單選題');
-
-        header.appendChild(title);
-        header.appendChild(topic);
-        qDiv.appendChild(header);
-
-        const optWrap = document.createElement('div');
-        optWrap.className = 'options';
-
-        q.options.forEach((opt, optIdx) => {
-          const optDiv = document.createElement('label');
-          optDiv.className = 'option-item';
-
-          const input = document.createElement('input');
-          input.type = q.type === 'multi' ? 'checkbox' : 'radio';
-          input.name = `q_${idx}`;
-          input.value = String(optIdx);
-
-          input.addEventListener('change', () => {
-            if (q.type === 'multi') {
-              const arr = answersMap[idx] || [];
-              if (input.checked) {
-                if (!arr.includes(optIdx)) arr.push(optIdx);
-              } else {
-                const i = arr.indexOf(optIdx);
-                if (i >= 0) arr.splice(i, 1);
-              }
-              answersMap[idx] = arr;
-            } else {
-              answersMap[idx] = [optIdx];
-              // 同一題其他 radio 不需額外處理，瀏覽器自己會管
-            }
-          });
-
-          const label = document.createElement('span');
-          label.className = 'option-label';
-          const letter = String.fromCharCode(65 + optIdx);
-          label.textContent = `${letter}. ${opt}`;
-
-          optDiv.appendChild(input);
-          optDiv.appendChild(label);
-          optWrap.appendChild(optDiv);
-        });
-
-        qDiv.appendChild(optWrap);
-
-        const meta = document.createElement('div');
-        meta.className = 'q-meta';
-        meta.textContent = q.tag ? `標籤：${q.tag}` : '';
-        qDiv.appendChild(meta);
-
-        questionListEl.appendChild(qDiv);
-      });
-
-      summaryBox.textContent = `已載入 ${questions.length} 題。請作答後按「交卷」。`;
-    }
-
-    function startTimer() {
-      if (!timeLimitMinutes || timeLimitMinutes <= 0) {
-        timerEl.textContent = '未限制';
-        return;
-      }
-      timerRemainSec = timeLimitMinutes * 60;
-      updateTimerText();
-      if (timerHandle) clearInterval(timerHandle);
-      timerHandle = setInterval(() => {
-        timerRemainSec--;
-        if (timerRemainSec <= 0) {
-          clearInterval(timerHandle);
-          timerEl.textContent = '時間到，自動交卷中...';
-          submitExam(true);
+      try {
+        if (fmt === "json") {
+          const data = JSON.parse(raw);
+          return normalizeJSONQuestions(data);
         } else {
-          updateTimerText();
+          return parseSimpleCSV(raw);
+        }
+      } catch (e) {
+        console.error(e);
+        alert("解析匯入內容時發生錯誤，請確認格式是否正確。");
+        return [];
+      }
+    }
+
+    importBtn.onclick = () => {
+      const targetId = importTargetBankSelect.value;
+      let bank = null;
+      if (targetId === "__new__") {
+        const name = newBankNameInput.value.trim();
+        if (!name) {
+          alert("請輸入新題庫名稱。");
+          return;
+        }
+        bank = { id: "bank-" + Date.now(), name, createdAt: new Date().toISOString(), questions: [] };
+        banks.push(bank);
+      } else {
+        bank = banks.find(b => b.id === targetId);
+        if (!bank) {
+          alert("找不到目標題庫。");
+          return;
+        }
+      }
+      const imported = parseImportText();
+      if (imported.length === 0) {
+        alert("沒有成功解析出任何題目。");
+        if (targetId === "__new__") {
+          banks = banks.filter(b => b !== bank || b.questions.length > 0);
+        }
+        return;
+      }
+      const startId = bank.questions.length > 0
+        ? Math.max(...bank.questions.map(q => q.id || 0)) + 1
+        : 1;
+      imported.forEach((q, i) => {
+        bank.questions.push({
+          id: startId + i,
+          topic: q.topic || "",
+          text: q.text || "",
+          options: q.options,
+          answers: q.answers,
+          type: q.type || (q.answers && q.answers.length > 1 ? "multi" : "single"),
+          explanation: q.explanation || ""
+        });
+      });
+      saveBanks(banks);
+      refreshBankSelects();
+      importTextArea.value = "";
+      fileInput.value = "";
+      newBankNameInput.value = "";
+      alert(`匯入完成，新增 ${imported.length} 題。`);
+    };
+
+    function stopTimer() {
+      if (timerId !== null) {
+        clearInterval(timerId);
+        timerId = null;
+      }
+    }
+
+    function updateTimeDisplay() {
+      const m = Math.floor(remainingSeconds / 60),
+        s = remainingSeconds % 60;
+      timeRemainingSpan.textContent =
+        `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    function startTimer(limit) {
+      stopTimer();
+      if (!limit || limit <= 0) {
+        timeArea.classList.add("hidden");
+        return;
+      }
+      remainingSeconds = limit * 60;
+      timeArea.classList.remove("hidden");
+      updateTimeDisplay();
+      timerId = setInterval(() => {
+        if (!sessionActive) return;
+        remainingSeconds--;
+        if (remainingSeconds <= 0) {
+          remainingSeconds = 0;
+          updateTimeDisplay();
+          stopTimer();
+          gradeAll(true); // 時間到自動批改（不再詢問）
+        } else {
+          updateTimeDisplay();
         }
       }, 1000);
     }
 
-    function updateTimerText() {
-      const m = Math.floor(timerRemainSec / 60);
-      const s = timerRemainSec % 60;
-      timerEl.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    function updateSessionPlanInfo() {
+      if (!currentBank || !currentBank.questions) {
+        sessionSummaryDiv.textContent = "目前沒有題庫可用。";
+        return;
+      }
+      const mode = modeSelect.value,
+        topicFilter = topicFilterSelect.value || "__all__";
+      const avail = currentBank.questions.filter(q => {
+        if (topicFilter !== "__all__" && q.topic !== topicFilter) return false;
+        if (mode === "wrong" && q.wrong !== true) return false;
+        return true;
+      });
+      const count = avail.length;
+      if (count === 0) {
+        const modeText = mode === "all" ? "一般模式" : "錯題本模式";
+        const topicText = topicFilter === "__all__" ? "全部主題" : `主題：${topicFilter}`;
+        sessionSummaryDiv.textContent =
+          `${topicText} ｜ 模式：${modeText} ｜ 可用題目：0 題`;
+        return;
+      }
+      const nRaw = questionCountInput.value.trim();
+      let planned = count;
+      if (nRaw !== "") {
+        const n = parseInt(nRaw, 10);
+        if (!isNaN(n) && n > 0) planned = Math.min(n, count);
+      }
+      const modeText = mode === "all" ? "一般模式" : "錯題本模式";
+      const topicText = topicFilter === "__all__" ? "全部主題" : `主題：${topicFilter}`;
+      sessionSummaryDiv.textContent =
+        `${topicText} ｜ 模式：${modeText} ｜ 可用題目：${count} 題 ｜ 本次練習題數：${planned} 題（全部顯示在下方）`;
     }
 
-    function gradeExam() {
-      const total = questions.length;
-      let correct = 0;
+    function updateSessionProgressSummary() {
+      const total = sessionIndices.length;
+      if (total === 0) return;
+      const score = Math.round((correctCount * 100) / total); // 滿分100
+      const base = sessionSummaryDiv.textContent.split("｜ 已作答")[0];
+      sessionSummaryDiv.textContent =
+        `${base} ｜ 已作答：${answeredCount}/${total} 題，答對：${correctCount} 題 ｜ 本次得分：${score} 分`;
+    }
+
+    function startSession() {
+      if (!currentBank || !currentBank.questions || currentBank.questions.length === 0) {
+        alert("目前題庫沒有題目。");
+        return;
+      }
+      const mode = modeSelect.value,
+        topicFilter = topicFilterSelect.value || "__all__";
+      let candidates = [];
+      currentBank.questions.forEach((q, idx) => {
+        if (topicFilter !== "__all__" && q.topic !== topicFilter) return;
+        if (mode === "wrong" && q.wrong !== true) return;
+        candidates.push(idx);
+      });
+      if (candidates.length === 0) {
+        alert("符合條件的題目為 0，請調整主題或模式。");
+        return;
+      }
+      shuffle(candidates);
+      const nRaw = questionCountInput.value.trim();
+      let chosen = candidates.length;
+      if (nRaw !== "") {
+        const n = parseInt(nRaw, 10);
+        if (!isNaN(n) && n > 0) chosen = Math.min(n, candidates.length);
+      }
+      sessionIndices = candidates.slice(0, chosen);
+      answeredMap = {};
+      answeredCount = 0;
+      correctCount = 0;
+      sessionActive = true;
+      submitAllBtn.disabled = false;
+      questionsContainer.innerHTML = "";
+
+      sessionIndices.forEach((qIdx, i) => {
+        const q = currentBank.questions[qIdx];
+        const card = document.createElement("div");
+        card.className = "q-card";
+        card.dataset.qIndex = qIdx;
+        const isMulti = q.type === "multi" || (Array.isArray(q.answers) && q.answers.length > 1);
+        const typeText = isMulti ? "多選" : "單選";
+
+        const header = document.createElement("div");
+        header.className = "q-header";
+        header.innerHTML =
+          `<span>第 ${i + 1} 題（${typeText}）</span>
+           <span class="q-topic">${q.topic ? ("主題：" + q.topic) : ""}</span>`;
+
+        const textDiv = document.createElement("div");
+        textDiv.className = "q-text";
+        textDiv.textContent = q.text;
+
+        const optsDiv = document.createElement("div");
+        optsDiv.className = "options";
+        q.options.forEach((optText, idx) => {
+          const btn = document.createElement("button");
+          btn.className = "option-btn";
+          btn.textContent = String.fromCharCode(65 + idx) + ". " + optText;
+          btn.dataset.optionIndex = idx;
+          if (isMulti) {
+            btn.onclick = () => onMultiOptionClick(card, btn);
+          } else {
+            btn.onclick = () => onSingleOptionClick(card, btn);
+          }
+          optsDiv.appendChild(btn);
+        });
+
+        const footer = document.createElement("div");
+        footer.className = "q-footer";
+        const statusSpan = document.createElement("span");
+        statusSpan.className = "q-footer-status";
+        statusSpan.textContent = "尚未批改";
+
+        const showExpBtn = document.createElement("button");
+        showExpBtn.className = "btn-small btn-outline";
+        showExpBtn.textContent = isMulti ? "看正解 / 解析" : "看解析";
+        showExpBtn.onclick = () => showExplanation(card);
+
+        footer.appendChild(showExpBtn);
+        footer.appendChild(statusSpan);
+
+        const expDiv = document.createElement("div");
+        expDiv.className = "q-explanation";
+
+        card.append(header, textDiv, optsDiv, footer, expDiv);
+        questionsContainer.appendChild(card);
+      });
+
+      updateSessionPlanInfo();
+      answeredCount = 0;
+      correctCount = 0;
+
+      const timeRaw = timeLimitInput.value.trim();
+      let limit = 0;
+      if (timeRaw !== "") {
+        const m = parseInt(timeRaw, 10);
+        if (!isNaN(m) && m > 0) limit = m;
+      }
+      startTimer(limit);
+    }
+
+    function markQuestionWrong(qIndex) {
+      const q = currentBank.questions[qIndex];
+      if (!q.wrong) {
+        q.wrong = true;
+        saveBanks(banks);
+        refreshBankSelects();
+      }
+    }
+
+    function onSingleOptionClick(card, btn) {
+      if (!sessionActive) return;
+      const qIndex = parseInt(card.dataset.qIndex, 10);
+      if (answeredMap[qIndex]?.graded) return; // 批改後不能再改
+      const buttons = card.querySelectorAll(".option-btn");
+      buttons.forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+    }
+
+    function onMultiOptionClick(card, btn) {
+      if (!sessionActive) return;
+      const qIndex = parseInt(card.dataset.qIndex, 10);
+      if (answeredMap[qIndex]?.graded) return;
+      btn.classList.toggle("selected");
+    }
+
+    function showExplanation(card) {
+      const qIndex = parseInt(card.dataset.qIndex, 10);
+      const q = currentBank.questions[qIndex];
+      const expDiv = card.querySelector(".q-explanation");
+      const buttons = card.querySelectorAll(".option-btn");
+      const answers = Array.isArray(q.answers) ? q.answers : [q.answers];
+      buttons.forEach((b, idx) => {
+        if (answers.includes(idx)) b.classList.add("correct");
+      });
+      expDiv.textContent = "解析：" + (q.explanation && q.explanation.trim() !== "" ? q.explanation : "此題沒有額外解析說明。");
+      expDiv.style.display = "block";
+    }
+
+    function gradeAll(autoByTime = false) {
+      if (!sessionActive) {
+        if (!autoByTime) alert("目前沒有進行中的練習。");
+        return;
+      }
+      sessionActive = false;
+      stopTimer();
+      submitAllBtn.disabled = true;
+
+      answeredCount = 0;
+      correctCount = 0;
+
       const wrongDetailList = [];
 
-      const isSameSet = (a, b) => {
-        if (!Array.isArray(a) || !Array.isArray(b)) return false;
-        if (a.length !== b.length) return false;
-        const aa = [...a].sort();
-        const bb = [...b].sort();
-        return aa.every((v, i) => v === bb[i]);
-      };
+      sessionIndices.forEach(qIdx => {
+        const card = questionsContainer.querySelector(`.q-card[data-q-index="${qIdx}"]`);
+        if (!card) return;
+        const q = currentBank.questions[qIdx];
+        const buttons = card.querySelectorAll(".option-btn");
+        let chosen = [];
+        buttons.forEach((btn, idx) => {
+          if (btn.classList.contains("selected")) {
+            chosen.push(idx);
+          }
+        });
 
-      questions.forEach((q, idx) => {
-        const std = Array.isArray(q.answers)
-          ? q.answers
-          : (typeof q.answer === 'number' ? [q.answer] : []);
-        const user = answersMap[idx] || [];
+        const stdAnswers = Array.isArray(q.answers) ? q.answers : [q.answers];
+        const sortedChosen = [...chosen].sort();
+        const sortedStd = [...stdAnswers].sort();
 
-        let ok = false;
-        if (q.type === 'multi' || std.length > 1) {
-          ok = isSameSet(std, user);
+        const isCorrect =
+          sortedChosen.length === sortedStd.length &&
+          sortedChosen.every((v, i) => v === sortedStd[i]);
+
+        if (isCorrect) {
+          correctCount++;
+          markQuestionCorrect(qIdx);
         } else {
-          ok = user.length === 1 && std.length === 1 && user[0] === std[0];
-        }
+          markQuestionWrong(qIdx);
+          const qId =
+            q.id ||
+            q.qid ||
+            q.code ||
+            (typeof q.no !== "undefined" ? String(q.no) : `idx-${qIdx}`);
 
-        if (ok) {
-          correct++;
-        } else {
           wrongDetailList.push({
-            id: idx + 1,
-            text: q.text,
-            topic: q.topic || '',
-            tag: q.tag || '',
-            options: q.options || [],
-            answers: std,
-            userAnswer: user,
-            bankId,
-            explanation: q.explanation || ''
+            id: qId,
+            text: q.text || q.question || "",
+            answer: (Array.isArray(stdAnswers) ? stdAnswers : [stdAnswers]).join(","),
+            userAnswer: chosen.join(","),
+            bankId: currentBank.id || ""
           });
         }
       });
 
-      const score = total > 0 ? Math.round(100 * correct / total) : 0;
-      return { total, correct, score, wrongDetailList };
-    }
-
-    async function submitExam(auto = false) {
-      if (!questions || questions.length === 0) {
-        alert('尚未載入題目。');
-        return;
+      updateSessionProgressSummary();
+      const total = sessionIndices.length;
+      const score = total > 0 ? Math.round(correctCount * 100 / total) : 0;
+      if (autoByTime) {
+        alert(`時間到，已自動批改並統計成績。\n本次得分：${score} 分（答對 ${correctCount}/${total} 題）`);
+      } else {
+        alert(`已完成批改。\n本次得分：${score} 分（答對 ${correctCount}/${total} 題）`);
       }
-      if (!auto) {
-        const ok = confirm('確定要交卷並送出成績嗎？');
-        if (!ok) return;
-      }
-      btnSubmit.disabled = true;
 
-      const { total, correct, score, wrongDetailList } = gradeExam();
-      const modeLabel = mode === 'room' ? 'room' : 'personal';
-
-      const summary = [];
-      summary.push(`作答完畢！`);
-      summary.push(`總題數：${total}`);
-      summary.push(`答對題數：${correct}`);
-      summary.push(`得分：${score} 分`);
-      summary.push(`錯題數：${wrongDetailList.length}`);
-      summary.push('（系統已將成績與錯題送回 Redis，首頁會更新排行榜與我的成績。）');
-      summaryBox.textContent = summary.join('\n');
-
+      // 將成績送給後端，更新「我的成績 / 排行榜 / 錯題本」
       try {
-        await fetch('/api/exam_result', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        let playerId = null;
+        let playerName = "";
+        try {
+          const rawProfile = localStorage.getItem(PLAYER_PROFILE_KEY);
+          if (rawProfile) {
+            const p = JSON.parse(rawProfile);
+            playerId = p.playerId || null;
+            playerName = p.name || "";
+          }
+        } catch (e) { }
+
+        if (!playerId) {
+          playerId = "guest-" + Math.random().toString(36).slice(2, 8);
+        }
+
+        let mode = "personal";
+        let roomId = "";
+        let bankId = currentBank.id || "";
+        try {
+          const rawRules = localStorage.getItem(ROOM_RULES_KEY);
+          if (rawRules) {
+            const rules = JSON.parse(rawRules);
+            if (rules && rules.roomId) {
+              mode = "room";
+              roomId = rules.roomId;
+              if (rules.bankId) bankId = rules.bankId;
+            }
+          }
+        } catch (e) { }
+
+        fetch("/api/exam_result", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             playerId,
             name: playerName,
-            mode: modeLabel,
-            roomId: roomId || '',
-            bankId: bankId || '',
+            mode,
+            roomId,
+            bankId,
             score,
             total,
-            correctCount: correct,
+            correctCount,
             wrongQuestions: wrongDetailList
           })
+        }).catch(e => {
+          console.error("submit exam_result failed", e);
         });
       } catch (e) {
-        console.error('submit exam_result failed', e);
+        console.error("exam_result wrap failed", e);
       }
 
-      // 房間模式交卷後清掉規則，避免上一場影響下一場
-      if (mode === 'room') {
-        try { localStorage.removeItem(ROOM_RULES_KEY); } catch (e) { }
-      }
+      // 若是房間模式考完，就清除房間規則，下次回到一般練習
+      try { localStorage.removeItem(ROOM_RULES_KEY); } catch (e) { }
+
+      // 回到 FlashBattle 首頁（保留登入資訊在 localStorage）
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 500);
     }
 
-    btnSubmit.addEventListener('click', () => submitExam(false));
+    quizBankSelect.onchange = initCurrentBank;
+    modeSelect.onchange = updateSessionPlanInfo;
+    topicFilterSelect.onchange = updateSessionPlanInfo;
+    questionCountInput.oninput = updateSessionPlanInfo;
+    startSessionBtn.onclick = startSession;
 
-    btnBackHome.addEventListener('click', () => {
-      window.location.href = '/';
-    });
+    // ★★ 二次確認送出機制 ★★
+    submitAllBtn.onclick = () => {
+      if (submitAllBtn.disabled) return;
+      const ok = confirm("確定要送出並批改嗎？\n送出後將無法再修改答案。");
+      if (!ok) return;
+      gradeAll(false);
+    };
 
-    fileInput.addEventListener('change', () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const data = JSON.parse(reader.result);
-          questions = normalizeQuestions(Array.isArray(data.questions) ? data.questions : data);
-          mode = 'personal';
-          roomId = '';
-          bankId = file.name.replace(/\.[^.]+$/, '');
-          renderHeader();
-          renderQuestions();
-          summaryBox.textContent = `已從檔案載入 ${questions.length} 題。`;
-          timeLimitMinutes = 0;
-          timerEl.textContent = '未限制';
-        } catch (e) {
-          alert('JSON 格式解析錯誤。');
-        }
-      };
-      reader.readAsText(file, 'utf-8');
-    });
-
-    btnLoadJson.addEventListener('click', () => {
-      const txt = jsonInput.value.trim();
-      if (!txt) {
-        alert('請先貼上 JSON 文字。');
-        return;
-      }
-      try {
-        const data = JSON.parse(txt);
-        questions = normalizeQuestions(Array.isArray(data.questions) ? data.questions : data);
-        mode = 'personal';
-        roomId = '';
-        bankId = 'json手動貼上';
-        renderHeader();
-        renderQuestions();
-        summaryBox.textContent = `已從文字載入 ${questions.length} 題。`;
-        timeLimitMinutes = 0;
-        timerEl.textContent = '未限制';
-      } catch (e) {
-        alert('JSON 格式解析錯誤。');
-      }
-    });
-
-    (function init() {
-      loadProfile();
-      detectRoomRules();
-      renderHeader();
-      renderQuestions();
-      if (mode === 'room' && questions.length > 0 && timeLimitMinutes > 0) {
-        startTimer();
-        summaryBox.textContent =
-          `房間測驗已就緒：共 ${questions.length} 題，限時 ${timeLimitMinutes} 分鐘。請開始作答，時間到會自動交卷。`;
-      }
-    })();
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js').catch(() => { });
-      });
+    refreshBankSelects();
+    if (banks.length > 0) {
+      quizBankSelect.value = banks[0].id;
+      initCurrentBank();
+    } else {
+      bankInfoDiv.textContent = "目前沒有題庫，請先在『題庫管理』匯入。";
     }
+    applyRoomRulesIfAny();
+
   </script>
 </body>
 

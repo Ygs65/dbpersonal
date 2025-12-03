@@ -25,16 +25,6 @@ redis.on('error', (err) => {
   console.error('[Redis] error:', err);
 });
 
-// ===== 開發者 root 設定 =====
-const ROOT_USER = 'root';
-// ⚠ 請在啟動前用環境變數設定 ROOT_PASSWORD，一旦設定就視為「不可更改」
-// 例如：ROOT_PASSWORD=yourpass npm start
-const ROOT_PASSWORD = process.env.ROOT_PASSWORD || '';
-
-if (!ROOT_PASSWORD) {
-  console.warn('[WARN] ROOT_PASSWORD 未設定，root 開發者刪除房間功能將無法使用。');
-}
-
 // ===== Express / Socket.IO =====
 const app = express();
 const server = http.createServer(app);
@@ -45,6 +35,7 @@ const io = new SocketIOServer(server, {
 });
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 
 // 靜態檔案：直接把整個專案資料夾當靜態目錄
 app.use(express.static(__dirname));
@@ -487,75 +478,6 @@ io.on('connection', (socket) => {
     });
 
     socket.emit('room_exam_ack', { ok: true, roomId, bankId });
-  });
-
-  // ---- 新增：刪除房間（只有房主或 root 開發者可以） ----
-  socket.on('delete_room', async ({ roomId, devPassword }) => {
-    try {
-      if (!roomId) {
-        socket.emit('delete_room_ack', { ok: false, error: 'bad_request' });
-        return;
-      }
-
-      const settingsKey = ROOM_SETTINGS_KEY(roomId);
-      const exists = await redis.exists(settingsKey);
-      if (!exists) {
-        socket.emit('delete_room_ack', { ok: false, error: 'not_found', roomId });
-        return;
-      }
-
-      let settings = {};
-      const settingsJson = await redis.get(settingsKey);
-      if (settingsJson) {
-        try { settings = JSON.parse(settingsJson); } catch {}
-      }
-
-      const currentUserId = socket.data?.userId || socket.id;
-      const isHost = settings.hostId && settings.hostId === currentUserId;
-      const isDev =
-        currentUserId === ROOT_USER &&
-        ROOT_PASSWORD &&
-        typeof devPassword === 'string' &&
-        devPassword === ROOT_PASSWORD;
-
-      if (!isHost && !isDev) {
-        socket.emit('delete_room_ack', { ok: false, error: 'no_permission', roomId });
-        return;
-      }
-
-      const patterns = [`room:${roomId}:*`, `bank:${roomId}:*`];
-      let allKeys = [];
-      for (const p of patterns) {
-        const ks = await redis.keys(p);
-        allKeys = allKeys.concat(ks);
-      }
-
-      let delCount = 0;
-      if (allKeys.length > 0) {
-        delCount = await redis.del(allKeys);
-      }
-
-      // 對該房間所有人廣播房間已被刪除
-      io.to(roomId).emit('room_event', {
-        type: 'room_deleted',
-        roomId
-      });
-
-      // 讓 socket 離開房間（只對目前這個連線）
-      socket.leave(roomId);
-      if (socket.data.currentRoom === roomId) {
-        socket.data.currentRoom = null;
-      }
-
-      socket.emit('delete_room_ack', {
-        ok: true,
-        roomId,
-        deletedKeys: delCount
-      });
-    } catch (e) {
-      console.error('[delete_room] error:', e);
-      socket.emit('delete_room_ack', { ok: false, error: 'server_error' });
-    }
   });
 
   // ---- 排行榜（簡單 stub）----

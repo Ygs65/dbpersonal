@@ -227,7 +227,7 @@
               <input id="bankNameInput" placeholder="題庫名稱（選填）">
             </div>
             <div style="flex:0 0 auto;">
-              <button id="btnImportBank" class="btn">上傳並建立題庫</button>
+              <button id="btnImportBank" class="btn" disabled>上傳並建立題庫</button>
             </div>
           </div>
 
@@ -314,7 +314,7 @@
       btnReloadBanks.disabled = !enabled;
       btnLoadBankQuestions.disabled = !enabled;
       btnDeleteBank.disabled = !enabled;
-      // 匯入題庫按鈕保持可按，實際權限在 onclick 內檢查 joinedRoomId。
+      btnImportBank.disabled = !enabled;
       if (!enabled) {
         bankSelect.innerHTML = '<option value="">（請先加入房間）</option>';
         questionInfo.textContent = '房間模式下，題庫會鎖定在房間內；請先加入房間。';
